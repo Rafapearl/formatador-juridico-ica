@@ -323,9 +323,10 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
                               espacamento_depois=6, recuo_lista=True)
         
         elif tipo == 'citacao':
-            aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
-                                       italico=True, tamanho_fonte=11,
-                                       espacamento_antes=6, espacamento_depois=6)
+    aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
+                              italico=True, tamanho_fonte=11,  # Fonte menor e itálico
+                              espacamento_antes=6, espacamento_depois=6,
+                              recuo_lista=True)  # Com recuo para destacar
         
         elif tipo == 'lista':
             aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=False,
