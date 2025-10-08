@@ -1,0 +1,393 @@
+import streamlit as st
+from docx import Document
+from docx.shared import Pt, RGBColor, Inches, Cm
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
+import re
+import os
+import tempfile
+
+# Configurações do rodapé
+RODAPE_CONFIG = {
+    'endereco': 'Avenida Cristovão Colombo, nº 485, 4º andar, Savassi, Belo Horizonte/MG',
+    'telefone': '(31) 9 9703-9242',
+    'email': 'contato@icaadvocacia.com.br',
+    'cor_fundo': (0, 0, 102),  # RGB para azul escuro (navy)
+    'cor_texto': (255, 255, 255),  # RGB para branco
+    'largura': '150%',  # Define a largura do rodapé como 100% da página
+    'altura': '150%'
+}
+
+# Configurações de formatação
+FORMATO_CONFIG = {
+    'fonte_padrao': 'Arial',
+    'tamanho_fonte_normal': 12,
+    'tamanho_fonte_titulo': 12,
+    'cor_titulo': (59, 75, 160),  # RGB para azul ICA (#3B4BA0)
+    'cor_secao': (59, 75, 160),  # RGB para azul ICA
+    'cor_linha': (192, 192, 192),  # RGB para cinza claro
+    'espacamento_antes': Pt(6),
+    'espacamento_depois': Pt(6),
+    'espacamento_linha': 1.5
+}
+
+def criar_cabecalho(doc, logo_path=None):
+    """
+    Cria cabeçalho com logo ICA centralizado.
+    """
+    section = doc.sections[0]
+    header = section.header
+
+    # Limpar cabeçalho existente
+    for para in header.paragraphs:
+        para.clear()
+
+    # Criar parágrafo para o logo
+    p = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    # Adicionar logo se fornecido
+    if logo_path and os.path.exists(logo_path):
+        run = p.add_run()
+        run.add_picture(logo_path, width=Inches(2.5))  # Largura de 2.5 polegadas
+
+    # Espaçamento após o logo
+    p.paragraph_format.space_after = Pt(24)
+    p.paragraph_format.space_before = Pt(12)
+
+
+def criar_rodape(doc, config):
+    """
+    Cria rodapé personalizado com fundo colorido e informações do escritório.
+    """
+    section = doc.sections[0]
+    footer = section.footer
+
+    # Salvar as margens originais do documento
+    original_left_margin = section.left_margin
+    original_right_margin = section.right_margin
+
+    # Limpar rodapé existente
+    for para in footer.paragraphs:
+        para.clear()
+
+    # Criar parágrafo do rodapé
+    p = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    # Adicionar fundo colorido
+    shading_elm = OxmlElement('w:shd')
+    shading_elm.set(qn('w:fill'), '{:02x}{:02x}{:02x}'.format(*config['cor_fundo']))
+    p._element.get_or_add_pPr().append(shading_elm)
+
+    # Configurar altura do parágrafo para aproximadamente 2.4 cm
+    p.paragraph_format.space_before = Pt(50)
+    p.paragraph_format.space_after = Pt(50)
+
+    # Adicionar espaço antes do texto para centralizá-lo verticalmente
+    run_space_before = p.add_run("\n\n")  # Adiciona espaço no início
+    run_space_before.font.size = Pt(2)  # Tamanho menor para controle fino
+
+    # Linha 1: Endereço
+    run1 = p.add_run(config['endereco'])
+    run1.font.color.rgb = RGBColor(*config['cor_texto'])
+    run1.font.size = Pt(10)
+    run1.font.name = 'Arial'
+
+    # Linha 2: Telefone e email
+    p.add_run('\n')
+    run2 = p.add_run(f"{config['telefone']} | {config['email']}")
+    run2.font.color.rgb = RGBColor(*config['cor_texto'])
+    run2.font.size = Pt(10)
+    run2.font.name = 'Arial'
+    p.add_run("\n\n\n")  # Add extra lines at the bottom
+
+
+def adicionar_linha_horizontal(paragrafo, cor_rgb=(192, 192, 192)):
+    p = paragrafo._element
+    pPr = p.get_or_add_pPr()
+    pBdr = OxmlElement('w:pBdr')
+    bottom = OxmlElement('w:bottom')
+    bottom.set(qn('w:val'), 'single')
+    bottom.set(qn('w:sz'), '6')  # Tamanho da linha
+    bottom.set(qn('w:space'), '1')
+    bottom.set(qn('w:color'), '{:02x}{:02x}{:02x}'.format(*cor_rgb))
+    pBdr.append(bottom)
+    pPr.append(pBdr)
+
+
+def aplicar_formatacao_paragrafo(paragrafo, alinhamento='justify', negrito=False,
+                                  italico=False, tamanho_fonte=12, espacamento_antes=6,
+                                  espacamento_depois=6, espacamento_linha=1.5, cor_texto=None):
+    # Alinhamento
+    if alinhamento == 'center':
+        paragrafo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    elif alinhamento == 'justify':
+        paragrafo.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    elif alinhamento == 'left':
+        paragrafo.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+    # Espaçamento
+    paragrafo.paragraph_format.space_before = Pt(espacamento_antes)
+    paragrafo.paragraph_format.space_after = Pt(espacamento_depois)
+    paragrafo.paragraph_format.line_spacing = espacamento_linha
+
+    # Formatação de fonte
+    for run in paragrafo.runs:
+        run.font.name = 'Arial'
+        run.font.size = Pt(tamanho_fonte)
+        run.bold = negrito
+        run.italic = italico
+        if cor_texto:
+            run.font.color.rgb = RGBColor(*cor_texto)
+
+
+def detectar_tipo_paragrafo(texto):
+    texto_limpo = texto.strip()
+
+    # Cabeçalho judicial
+    if texto_limpo.startswith('EXMO'):
+        return 'cabecalho', True, 'center'
+
+    # Título da ação (em azul)
+    if 'AÇÃO DE' in texto_limpo.upper() and len(texto_limpo) < 150:
+        return 'titulo_acao', True, 'center'
+
+    # Seções principais
+    if re.match(r'^[IVX]+[\s]*[.–—\-]+[\s]*(DOS?|DAS?)[\s]+[A-ZÀÁÂÃÉÊÍÓÔÕÚÇ\s]+$', texto_limpo):
+        return 'secao_principal', True, 'left'
+
+    # Subseções com bullet
+    if texto_limpo.startswith('▪') or texto_limpo.startswith('•'):
+        return 'subsecao', True, 'left'
+
+    # Citações jurídicas
+    if ('Art.' in texto_limpo or 'artigo' in texto_limpo.lower() or
+        texto_limpo.startswith('"') or 'STJ' in texto_limpo or 'TJ' in texto_limpo or
+        'REsp' in texto_limpo or 'Apelação' in texto_limpo):
+        return 'citacao', False, 'justify'
+
+    # Parágrafo normal
+    return 'normal', False, 'justify'
+
+
+def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
+    # Criar novo documento
+    doc_novo = Document()
+
+    # Configurar margens para o corpo do documento
+    sections = doc_novo.sections
+    for section in sections:
+        section.top_margin = Cm(2.5)
+        section.bottom_margin = Cm(2.5)
+        section.left_margin = Cm(3)
+        section.right_margin = Cm(2)
+
+    # Adicionar cabeçalho com logo
+    criar_cabecalho(doc_novo, logo_path)
+
+    # Processar cada parágrafo do documento original
+    for para in doc_entrada.paragraphs:
+        texto = para.text.strip()
+
+        if not texto:  # Pular parágrafos vazios mas adicionar espaço
+            doc_novo.add_paragraph()
+            continue
+
+        # Detectar tipo de parágrafo
+        tipo, negrito, alinhamento = detectar_tipo_paragrafo(texto)
+
+        # Criar novo parágrafo
+        p = doc_novo.add_paragraph()
+        run = p.add_run(texto)
+
+        # Aplicar formatação baseada no tipo
+        if tipo == 'cabecalho':
+            aplicar_formatacao_paragrafo(p, alinhamento='center', negrito=True,
+                                         tamanho_fonte=12, espacamento_antes=0,
+                                         espacamento_depois=40)
+
+        elif tipo == 'titulo_acao':
+            # Título em azul, centralizado, negrito
+            aplicar_formatacao_paragrafo(p, alinhamento='center', negrito=True,
+                                         tamanho_fonte=12, espacamento_antes=30,
+                                         espacamento_depois=24,
+                                         cor_texto=FORMATO_CONFIG['cor_titulo'])
+
+        elif tipo == 'secao_principal':
+            # Seção principal em azul com linha horizontal
+            aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=True,
+                                         tamanho_fonte=12, espacamento_antes=12,
+                                         espacamento_depois=6,
+                                         cor_texto=FORMATO_CONFIG['cor_secao'])
+            # Adicionar linha horizontal cinza
+            adicionar_linha_horizontal(p, FORMATO_CONFIG['cor_linha'])
+
+        elif tipo == 'subsecao':
+            aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=True,
+                                         tamanho_fonte=12, espacamento_antes=6,
+                                         espacamento_depois=6)
+
+        elif tipo == 'citacao':
+            aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
+                                         italico=True, tamanho_fonte=11,
+                                         espacamento_antes=6, espacamento_depois=6)
+
+        else:  # normal
+            aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
+                                         tamanho_fonte=12, espacamento_antes=6,
+                                         espacamento_depois=6)
+
+    # Processar tabelas do documento original
+    for table in doc_entrada.tables:
+        # Criar nova tabela com mesma estrutura
+        nova_tabela = doc_novo.add_table(rows=len(table.rows), cols=len(table.columns))
+        nova_tabela.style = 'Light Grid Accent 1'
+
+        for i, row in enumerate(table.rows):
+            for j, cell in enumerate(row.cells):
+                nova_tabela.rows[i].cells[j].text = cell.text
+                # Formatar primeira linha como cabeçalho
+                if i == 0:
+                    for paragraph in nova_tabela.rows[i].cells[j].paragraphs:
+                        for run in paragraph.runs:
+                            run.font.bold = True
+                            run.font.size = Pt(11)
+
+        # Adicionar espaço após tabela
+        doc_novo.add_paragraph()
+
+    # Configuração especial para o rodapé de página inteira
+    # Obter a última seção do documento (onde o rodapé será aplicado)
+    last_section = doc_novo.sections[-1]
+
+    # Fazer uma cópia das margens originais do documento
+    original_left = last_section.left_margin
+    original_right = last_section.right_margin
+
+    # Adicionar rodapé com as margens padrão
+    criar_rodape(doc_novo, RODAPE_CONFIG)
+
+    # Modificar as propriedades do rodapé para ocupar a largura total
+    footer = last_section.footer
+
+    # Aplicar estilo especial ao parágrafo do rodapé
+    for p in footer.paragraphs:
+        if p.text.strip():  # Se não estiver vazio
+            # Estender o parágrafo além das margens
+            p_format = p.paragraph_format
+
+            # Usar valores XML diretos para estender além das margens
+            p_element = p._element.get_or_add_pPr()
+
+            # Adicionar configuração de moldura para estender além das margens com altura fixa
+            from docx.oxml import parse_xml
+            frame_xml = parse_xml(
+            '<w:framePr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+            'w:w="13000" w:h="2500" w:wrap="around" w:vAnchor="page" w:hAnchor="page" w:xAlign="center" />'
+             )
+            p_element.append(frame_xml)
+
+            # Definir espaçamento interno para o rodapé ter altura de 2.4cm
+            p.paragraph_format.space_before = Pt(50)  # Aproximadamente 1.2 cm
+            p.paragraph_format.space_after = Pt(50)   # Aproximadamente 1.2 cm
+
+    # Salvar documento
+    doc_novo.save(doc_saida_path)
+    return doc_saida_path
+
+
+def main():
+    st.set_page_config(page_title="Formatador Jurídico ICA Advocacia", page_icon="📄")
+
+    st.title("📄 Formatador Jurídico ICA Advocacia")
+    st.write("Ferramenta para formatação automática de documentos jurídicos.")
+
+    # Upload do logo
+    st.header("1. Upload do Logo ICA")
+    logo_file = st.file_uploader("Faça upload do logo ICA (arquivo PNG)", type=["png", "jpg", "jpeg"])
+
+    if logo_file is not None:
+        # Salvar o logo em um arquivo temporário
+        temp_logo = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+        temp_logo.write(logo_file.getvalue())
+        logo_path = temp_logo.name
+
+        # Mostrar confirmação e preview
+        st.success("✅ Logo carregado com sucesso!")
+        st.image(logo_file, width=200)
+    else:
+        logo_path = None
+        st.warning("⚠️ Nenhum logo carregado. O cabeçalho será criado sem logo.")
+
+    # Upload dos documentos
+    st.header("2. Upload dos Documentos Word")
+    uploaded_files = st.file_uploader("Selecione os documentos Word (.docx)",
+                                     type=["docx"], accept_multiple_files=True)
+
+    if not uploaded_files:
+        st.warning("⚠️ Nenhum documento carregado.")
+    else:
+        st.success(f"✅ {len(uploaded_files)} documento(s) carregado(s)")
+
+    # Botão de processamento
+    st.header("3. Formatação")
+    if st.button("Formatar Documentos", disabled=(len(uploaded_files) == 0)):
+        if len(uploaded_files) > 0:
+            # Configurar indicadores de progresso
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+
+            # Criar pasta de saída temporária
+            temp_dir = tempfile.mkdtemp()
+
+            # Processar cada arquivo
+            arquivos_processados = []
+            for i, doc_file in enumerate(uploaded_files):
+                try:
+                    # Salvar arquivo temporariamente
+                    input_path = os.path.join(temp_dir, doc_file.name)
+                    with open(input_path, "wb") as f:
+                        f.write(doc_file.getvalue())
+
+                    # Gerar nome de saída
+                    nome_base = os.path.splitext(doc_file.name)[0]
+                    output_path = os.path.join(temp_dir, f"{nome_base}_FORMATADO.docx")
+
+                    # Atualizar status
+                    status_text.text(f"Processando: {doc_file.name}")
+
+                    # Formatar documento
+                    doc = Document(input_path)
+                    formatar_documento(doc, output_path, logo_path)
+                    arquivos_processados.append(output_path)
+
+                    # Atualizar barra de progresso
+                    progress = int(((i + 1) / len(uploaded_files)) * 100)
+                    progress_bar.progress(progress)
+
+                except Exception as e:
+                    st.error(f"❌ Erro ao processar {doc_file.name}: {str(e)}")
+
+            # Finalizar processamento
+            if arquivos_processados:
+                status_text.text(f"✅ Processamento concluído! {len(arquivos_processados)} documento(s) formatado(s).")
+
+                # Oferecer download dos documentos processados
+                st.header("4. Download dos Documentos Formatados")
+                for file_path in arquivos_processados:
+                    with open(file_path, "rb") as file:
+                        file_name = os.path.basename(file_path)
+                        st.download_button(
+                            label=f"⬇️ Baixar {file_name}",
+                            data=file,
+                            file_name=file_name,
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        )
+            else:
+                st.error("❌ Nenhum documento foi processado com sucesso.")
+
+
+if __name__ == "__main__":
+    main()
