@@ -153,39 +153,77 @@ def aplicar_formatacao_paragrafo(paragrafo, alinhamento='justify', negrito=False
 
 
 def detectar_tipo_paragrafo(texto):
+    """
+    Detecta o tipo de parágrafo com base em características específicas.
+    Implementa uma abordagem escalável com verificações em ordem de prioridade.
+    """
     texto_limpo = texto.strip()
-
-    # Cabeçalho judicial
-    if texto_limpo.startswith('EXMO'):
-        return 'cabecalho', True, 'center'
-
-    # Título da ação (em azul)
-    if 'AÇÃO DE' in texto_limpo.upper() and len(texto_limpo) < 150:
-        return 'titulo_acao', True, 'center'
     
-    # CORRIGIDO: Identificar qualquer item Doc. seguido de número
-    # Esta expressão regular deve capturar todos os formatos de Doc. N
+    # ETAPA 1: Verificações de estrutura específica (maior prioridade)
+    
+    # Itens Doc. - detecção robusta
     if re.match(r'^\s*Doc\.\s*\d+', texto_limpo):
         return 'item_doc', False, 'left'
     
-    # Seções principais
+    # Cabeçalho judicial
+    if texto_limpo.startswith('EXMO'):
+        return 'cabecalho', True, 'center'
+    
+    # ETAPA 2: Verificações de marcadores e listas
+    
+    # Marcadores de lista com espaços ou não
+    if re.match(r'^\s*[•▪■□◊○●◉◎◌◦⦿⦾]+\s+', texto_limpo):
+        return 'subsecao', True, 'left'
+    
+    # Listas numeradas (números seguidos de ponto ou parêntese)
+    if re.match(r'^\s*\d+[\.\)]\s+', texto_limpo):
+        return 'lista', False, 'left'
+    
+    # Listas com letras (a., b., etc.)
+    if re.match(r'^\s*[a-z][\.\)]\s+', texto_limpo):
+        return 'lista', False, 'left'
+    
+    # ETAPA 3: Verificações de conteúdo específico
+    
+    # Seções principais - padrão romano e estrutura específica
     if re.match(r'^[IVX]+[\s]*[.–—\-]+[\s]*(DOS?|DAS?)[\s]+[A-ZÀÁÂÃÉÊÍÓÔÕÚÇ\s]+$', texto_limpo):
         return 'secao_principal', True, 'left'
-
-    # Subseções com bullet - detecta espaços antes do marcador
-    if re.match(r'^\s*[•▪]\s+', texto_limpo):
-        return 'subsecao', True, 'left'
-
-    # Citações jurídicas
-    if ('Art.' in texto_limpo or 'artigo' in texto_limpo.lower() or
-        texto_limpo.startswith('"') or 'STJ' in texto_limpo or 'TJ' in texto_limpo or
-        'REsp' in texto_limpo or 'Apelação' in texto_limpo):
+    
+    # ETAPA 4: Verificações de conteúdo baseadas em palavras-chave
+    
+    # Título da ação - critérios mais específicos
+    # Verificar se contém "AÇÃO DE" e está em maiúsculas sem ser parte de outro item
+    if ('AÇÃO DE' in texto_limpo.upper() and 
+        len(texto_limpo) < 150 and 
+        texto_limpo.upper().count(' ') >= 2 and  # Ter pelo menos 2 espaços (3 palavras)
+        not any(marcador in texto_limpo for marcador in ['•', '▪', '-', '*']) and  # Não conter marcadores
+        not re.match(r'^\s*\d+[\.\)]', texto_limpo)):  # Não ser item numerado
+        return 'titulo_acao', True, 'center'
+    
+    # Citações jurídicas - expandida para capturar mais casos
+    if (any(termo in texto_limpo for termo in ['Art.', 'artigo', 'STJ', 'TJ', 'REsp', 'Apelação', '§', 'inciso']) or
+        texto_limpo.startswith('"') or
+        re.search(r'\b[A-Z]{2,}\b \d+[\.\,]?\d*\/\d+', texto_limpo)):  # Padrão de número de processo
         return 'citacao', False, 'justify'
-        
-    # Verificar outros tipos de listas
-    if re.search(r'^\s*[•▪\-*]\s+', texto_limpo) or re.search(r'^\s*\d+\.\s+', texto_limpo):
+    
+    # ETAPA 5: Verificações de outras características de formatação
+    
+    # Outros tipos de listas com marcadores diversos
+    if re.match(r'^\s*[\-–—*+]\s+', texto_limpo):
         return 'lista', False, 'left'
-
+    
+    # ETAPA 6: Verificações baseadas em análise contextual
+    
+    # Verificar se o texto tem aparência de título (curto e todas palavras importantes capitalizadas)
+    words = texto_limpo.split()
+    if (2 <= len(words) <= 7 and 
+        all(w[0].isupper() for w in words if len(w) > 3) and 
+        not texto_limpo.endswith('.') and
+        len(texto_limpo) < 50):
+        return 'subtitulo', True, 'left'
+    
+    # ETAPA 7: Classificação padrão
+    
     # Parágrafo normal
     return 'normal', False, 'justify'
 
