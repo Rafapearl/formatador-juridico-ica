@@ -241,11 +241,16 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
             aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
                                          italico=True, tamanho_fonte=11,
                                          espacamento_antes=6, espacamento_depois=6)
+        elif tipo == 'item_doc':
+            aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=False,
+                                         tamanho_fonte=12, espacamento_antes=6,
+                                         espacamento_depois=6)
 
         else:  # normal
             aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
                                          tamanho_fonte=12, espacamento_antes=6,
                                          espacamento_depois=6)
+        
 
     # Processar tabelas do documento original
     for table in doc_entrada.tables:
