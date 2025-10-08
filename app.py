@@ -137,7 +137,7 @@ def aplicar_formatacao_paragrafo(paragrafo, alinhamento='justify', negrito=False
     paragrafo.paragraph_format.space_after = Pt(espacamento_depois)
     paragrafo.paragraph_format.line_spacing = espacamento_linha
 
-    # NOVO: Recuo para itens de lista
+    # Recuo para itens de lista
     if recuo_lista:
         paragrafo.paragraph_format.left_indent = Inches(0.25)
         paragrafo.paragraph_format.first_line_indent = Inches(-0.25)
@@ -164,6 +164,7 @@ def detectar_tipo_paragrafo(texto):
         return 'titulo_acao', True, 'center'
     
     # CORRIGIDO: Identificar qualquer item Doc. seguido de número
+    # Esta expressão regular deve capturar todos os formatos de Doc. N
     if re.match(r'^\s*Doc\.\s*\d+', texto_limpo):
         return 'item_doc', False, 'left'
     
@@ -189,15 +190,10 @@ def detectar_tipo_paragrafo(texto):
     return 'normal', False, 'justify'
 
 
-
-def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
-    # Código de depuração para identificar problemas
-    with open("debug_formatacao.txt", "w", encoding="utf-8") as debug_file:
-        for i, para in enumerate(doc_entrada.paragraphs):
-            texto = para.text.strip()
-            if texto:
-                tipo, negrito, alinhamento = detectar_tipo_paragrafo(texto)
-                debug_file.write(f"#{i}: '{texto}' => TIPO: {tipo}\n")
+def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=False):
+    # Lista para armazenar informações de depuração
+    debug_info = []
+    
     # Criar novo documento
     doc_novo = Document()
 
@@ -213,7 +209,7 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
     criar_cabecalho(doc_novo, logo_path)
 
     # Processar cada parágrafo do documento original
-    for para in doc_entrada.paragraphs:
+    for i, para in enumerate(doc_entrada.paragraphs):
         texto = para.text.strip()
 
         if not texto:  # Pular parágrafos vazios mas adicionar espaço
@@ -222,9 +218,18 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
 
         # Detectar tipo de parágrafo
         tipo, negrito, alinhamento = detectar_tipo_paragrafo(texto)
+        
+        # Armazenar informações para depuração
+        if debug_mode:
+            debug_info.append({
+                "index": i,
+                "texto": texto[:50] + "..." if len(texto) > 50 else texto,
+                "tipo_detectado": tipo,
+                "negrito": negrito,
+                "alinhamento": alinhamento
+            })
 
         # Criar novo parágrafo
-        # Após criar o parágrafo
         p = doc_novo.add_paragraph()
         run = p.add_run(texto)
         
@@ -250,7 +255,7 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
             # Adicionar linha horizontal cinza
             adicionar_linha_horizontal(p, FORMATO_CONFIG['cor_linha'])
         
-        # NOVO: Para itens de documentos específicos (Doc. X)
+        # Para itens de documentos específicos (Doc. X)
         elif tipo == 'item_doc':
             aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=False,
                                        tamanho_fonte=12, espacamento_antes=6,
@@ -265,6 +270,11 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
             aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
                                        italico=True, tamanho_fonte=11,
                                        espacamento_antes=6, espacamento_depois=6)
+        
+        elif tipo == 'lista':
+            aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=False,
+                                       tamanho_fonte=12, espacamento_antes=6,
+                                       espacamento_depois=6, recuo_lista=True)
         
         else:  # normal
             aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
@@ -328,7 +338,11 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
 
     # Salvar documento
     doc_novo.save(doc_saida_path)
-    return doc_saida_path
+    
+    if debug_mode:
+        return doc_saida_path, debug_info
+    else:
+        return doc_saida_path
 
 
 def criar_arquivo_zip(arquivos):
@@ -350,6 +364,10 @@ def main():
         layout="wide"
     )
 
+    # Inicializar variável de estado para modo de depuração
+    if 'debug_mode' not in st.session_state:
+        st.session_state.debug_mode = False
+
     st.title("📄 Formatador Jurídico ICA Advocacia")
     st.write("Ferramenta para formatação automática de documentos jurídicos.")
     
@@ -363,6 +381,11 @@ def main():
         
         # Guardar o logo padrão
         save_logo = st.checkbox("Salvar logo para uso futuro", value=True)
+        
+        # Opção de depuração
+        st.session_state.debug_mode = st.checkbox("Modo de depuração", value=False)
+        if st.session_state.debug_mode:
+            st.info("O modo de depuração mostrará informações detalhadas sobre a formatação.")
     
     # ETAPA 1: Upload do Logo - Em seção separada e bem visível
     st.header("1️⃣ Upload do Logo ICA")
@@ -477,9 +500,18 @@ def main():
                     nome_base = os.path.splitext(doc_file.name)[0]
                     output_path = os.path.join(temp_dir, f"{nome_base}_FORMATADO.docx")
                     
-                    # Formatar documento
+                    # Formatar documento (agora com opção de debug)
                     doc = Document(input_path)
-                    formatar_documento(doc, output_path, logo_path)
+                    
+                    # Chama a função com o modo de depuração
+                    resultado = formatar_documento(doc, output_path, logo_path, st.session_state.debug_mode)
+                    
+                    if st.session_state.debug_mode:
+                        output_path, debug_info = resultado
+                        st.session_state[f'debug_info_{i}'] = debug_info
+                    else:
+                        output_path = resultado
+                        
                     arquivos_processados.append(output_path)
                     
                     # Atualizar progresso
@@ -500,6 +532,53 @@ def main():
                     with st.expander(f"⚠️ Erros ({len(errors)})"):
                         for file_name, error_msg in errors:
                             st.error(f"Arquivo: {file_name} - Erro: {error_msg}")
+                
+                # Exibir informações de depuração se ativado
+                if st.session_state.debug_mode:
+                    st.markdown("---")
+                    st.header("🔍 Informações de Depuração")
+                    
+                    for i, doc_file in enumerate(uploaded_files):
+                        debug_key = f'debug_info_{i}'
+                        if debug_key in st.session_state:
+                            with st.expander(f"Debug: {doc_file.name}"):
+                                # Criar uma tabela com as informações de depuração
+                                st.write("### Análise de Parágrafos")
+                                
+                                # Tabela de depuração
+                                debug_data = st.session_state[debug_key]
+                                
+                                # Criar tabela
+                                st.table([{
+                                    "#": item["index"],
+                                    "Texto": item["texto"],
+                                    "Tipo": item["tipo_detectado"],
+                                    "Negrito": "Sim" if item["negrito"] else "Não",
+                                    "Alinhamento": item["alinhamento"]
+                                } for item in debug_data])
+                                
+                                # Destacar possíveis problemas
+                                st.subheader("Possíveis problemas detectados")
+                                
+                                problemas = []
+                                for item in debug_data:
+                                    if "Doc." in item["texto"] and item["tipo_detectado"] != "item_doc":
+                                        problemas.append({
+                                            "Parágrafo": item["index"],
+                                            "Texto": item["texto"],
+                                            "Problema": f"Item Doc. detectado como '{item['tipo_detectado']}'"
+                                        })
+                                    if "•" in item["texto"] and item["tipo_detectado"] != "subsecao" and item["tipo_detectado"] != "lista":
+                                        problemas.append({
+                                            "Parágrafo": item["index"],
+                                            "Texto": item["texto"],
+                                            "Problema": f"Marcador • detectado como '{item['tipo_detectado']}'"
+                                        })
+                                
+                                if problemas:
+                                    st.table(problemas)
+                                else:
+                                    st.success("Nenhum problema evidente detectado.")
                 
                 # Adicionar espaço e linha separadora
                 st.markdown("---")
@@ -576,6 +655,7 @@ def main():
         - Você pode processar vários documentos de uma vez
         - Para melhor organização, use nomes descritivos para seus arquivos
         - O logo será mantido para uso futuro se você marcar a opção na barra lateral
+        - Ative o modo de depuração na barra lateral para ajudar a identificar problemas
         """)
     
     # Adicionar rodapé discreto da aplicação
