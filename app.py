@@ -163,15 +163,15 @@ def detectar_tipo_paragrafo(texto):
     if 'AÇÃO DE' in texto_limpo.upper() and len(texto_limpo) < 150:
         return 'titulo_acao', True, 'center'
     
-    # CORRIGIDO: Identificar especificamente os itens "Doc." com padrão mais flexível
+    # CORRIGIDO: Identificar qualquer item Doc. seguido de número
     if re.match(r'^\s*Doc\.\s*\d+', texto_limpo):
-        return 'item_doc', False, 'left'  # Formato normal (não azul)
-
+        return 'item_doc', False, 'left'
+    
     # Seções principais
     if re.match(r'^[IVX]+[\s]*[.–—\-]+[\s]*(DOS?|DAS?)[\s]+[A-ZÀÁÂÃÉÊÍÓÔÕÚÇ\s]+$', texto_limpo):
         return 'secao_principal', True, 'left'
 
-    # MODIFICADO: Subseções com bullet - Agora detecta espaços antes do marcador
+    # Subseções com bullet - detecta espaços antes do marcador
     if re.match(r'^\s*[•▪]\s+', texto_limpo):
         return 'subsecao', True, 'left'
 
@@ -180,18 +180,14 @@ def detectar_tipo_paragrafo(texto):
         texto_limpo.startswith('"') or 'STJ' in texto_limpo or 'TJ' in texto_limpo or
         'REsp' in texto_limpo or 'Apelação' in texto_limpo):
         return 'citacao', False, 'justify'
+        
+    # Verificar outros tipos de listas
+    if re.search(r'^\s*[•▪\-*]\s+', texto_limpo) or re.search(r'^\s*\d+\.\s+', texto_limpo):
+        return 'lista', False, 'left'
 
     # Parágrafo normal
     return 'normal', False, 'justify'
 
-    # Citações jurídicas
-    if ('Art.' in texto_limpo or 'artigo' in texto_limpo.lower() or
-        texto_limpo.startswith('"') or 'STJ' in texto_limpo or 'TJ' in texto_limpo or
-        'REsp' in texto_limpo or 'Apelação' in texto_limpo):
-        return 'citacao', False, 'justify'
-
-    # Parágrafo normal
-    return 'normal', False, 'justify'
 
 
 def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
