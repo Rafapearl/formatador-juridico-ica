@@ -149,21 +149,26 @@ def aplicar_formatacao_paragrafo(paragrafo, alinhamento='justify', negrito=False
 def detectar_tipo_paragrafo(texto):
     texto_limpo = texto.strip()
 
-    # Cabeçalho judicial
+    # Cabeçalho judicial (como já está)
     if texto_limpo.startswith('EXMO'):
         return 'cabecalho', True, 'center'
 
-    # Título da ação (em azul)
+    # Título da ação (como já está)
     if 'AÇÃO DE' in texto_limpo.upper() and len(texto_limpo) < 150:
         return 'titulo_acao', True, 'center'
+    
+    # NOVO: Identificar especificamente os itens "Doc."
+    if re.match(r'^Doc\.\s*\d+\s*[–—\-]+', texto_limpo):
+        return 'item_doc', False, 'left'  # Formato normal (não azul)
 
-    # Seções principais
+    # Seções principais (como já está)
     if re.match(r'^[IVX]+[\s]*[.–—\-]+[\s]*(DOS?|DAS?)[\s]+[A-ZÀÁÂÃÉÊÍÓÔÕÚÇ\s]+$', texto_limpo):
         return 'secao_principal', True, 'left'
 
-    # Subseções com bullet
-    if re.match(r'^\s*[•▪\-*]\s+', texto_limpo) or re.match(r'^\s*(?:Doc\.\s+\d+|[0-9]+\.)\s+', texto_limpo):
-        return 'lista', True, 'left'
+    # Subseções com bullet (como já está)
+    if texto_limpo.startswith('▪') or texto_limpo.startswith('•'):
+        return 'subsecao', True, 'left'
+
 
     # Citações jurídicas
     if ('Art.' in texto_limpo or 'artigo' in texto_limpo.lower() or
