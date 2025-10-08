@@ -159,23 +159,7 @@ def detectar_tipo_paragrafo(texto):
     """
     texto_limpo = texto.strip()
     
-    # DEBUG - Imprimir caracteres do texto para verificar aspas
-    # Descomentar essa seção se precisar diagnosticar problemas de aspas
-    """
-    if "Atraso ou cancelamento de voo" in texto_limpo:
-        print("\nDEBUG - TEXTO COM ASPAS:")
-        print(f"Texto: {texto_limpo}")
-        print("Caracteres individuais (com códigos):")
-        for i, char in enumerate(texto_limpo):
-            print(f"Posição {i}: '{char}' (código: {ord(char)})")
-    """
-    
     # ETAPA 1: Verificações de estrutura específica (maior prioridade)
-    
-    # Verificação específica para os itens problemáticos
-    if "Doc. 5 – Declaração de contingência" in texto_limpo or \
-       "Doc. 7 – Comprovação de perda de compromisso" in texto_limpo:
-        return 'item_doc', False, 'left'
     
     # Itens Doc. - detecção robusta
     if re.match(r'^\s*Doc\.\s*\d+', texto_limpo):
@@ -185,54 +169,27 @@ def detectar_tipo_paragrafo(texto):
     if texto_limpo.startswith('EXMO'):
         return 'cabecalho', True, 'center'
     
-    # ETAPA 2: DETECÇÃO DE CITAÇÕES COM BUSCA COMPLETA DE ASPAS
+    # ETAPA 2: VERIFICAÇÃO DE CITAÇÕES APRIMORADA
     
-    # Verificação avançada de aspas - códigos unicode e representações visuais
-    aspas = ['"', '"', '"', ''', ''', '«', '»', '„', '"', '‹', '›', 
-             '〝', '〞', '『', '』', '«', '»', '‟', '′', '″']
+    # Verificar todos os tipos de aspas (retas e curvas)
+    aspas_abertura = ['"', '"', '«', '„', '‹']
+    aspas_fechamento = ['"', '"', '»', '"', '›']
     
-    # Lista de códigos unicode para aspas (complementar à lista acima)
-    codigos_aspas = [0x22, 0x201C, 0x201D, 0x2018, 0x2019, 0xAB, 0xBB, 0x201E, 
-                    0x201F, 0x2039, 0x203A, 0x301D, 0x301E, 0x301F]
+    # Verificação EXPLÍCITA de texto que contém aspas
+    for aspas in aspas_abertura + aspas_fechamento:
+        if aspas in texto_limpo:
+            # Se encontrou qualquer tipo de aspas, é uma citação
+            return 'citacao', False, 'justify'
     
-    # Converter códigos unicode para caracteres e adicionar à lista
-    for codigo in codigos_aspas:
-        aspas.append(chr(codigo))
-    
-    # Verificar se o texto tem aspas EXPLICITAMENTE, caracter por caracter
-    tem_aspas = False
-    for char in texto_limpo:
-        if char in aspas or ord(char) in codigos_aspas:
-            tem_aspas = True
-            break
-    
-    # DETECÇÃO ESPECÍFICA para o caso mencionado
-    if "Atraso ou cancelamento de voo por falha operacional" in texto_limpo:
-        return 'citacao', False, 'justify'
-    
-    # Se tem aspas, é citação
-    if tem_aspas:
-        return 'citacao', False, 'justify'
-    
-    # ETAPA 3: Verificação por padrões regex de aspas
-    # Alguns formatos de texto podem usar representações específicas de aspas
-    if (re.search(r'[""].*[""]', texto_limpo) or  # Texto entre aspas duplas
-        re.search(r'[''].*['']', texto_limpo) or   # Texto entre aspas simples
-        re.search(r'[«»].*[«»]', texto_limpo)):    # Texto entre aspas angulares
-        return 'citacao', False, 'justify'
-    
-    # ETAPA 4: Artigos de lei e referências jurídicas específicas
+    # ETAPA 3: Artigos de lei e referências jurídicas específicas
+    # Estas são citações mesmo sem aspas, por serem referências técnicas
     if (re.match(r'Art\.\s*\d+', texto_limpo) or
         re.match(r'§\s*\d+', texto_limpo) or
         re.search(r'inciso\s+[IVX]+', texto_limpo) or
         re.search(r'alínea\s+[a-z]', texto_limpo)):
         return 'citacao', False, 'justify'
     
-    # ETAPA 5: Seções principais
-    if re.match(r'^[IVX]+[\s]*[.–—\-]+[\s]*(DOS?|DAS?)[\s]+[A-ZÀÁÂÃÉÊÍÓÔÕÚÇ\s]+$', texto_limpo):
-        return 'secao_principal', True, 'left'
-    
-    # ETAPA 6: Verificações de marcadores e listas
+    # ETAPA 4: Verificações de marcadores e listas
     
     # Marcadores de lista com espaços ou não
     if re.match(r'^\s*[•▪■□◊○●◉◎◌◦⦿⦾]+\s+', texto_limpo):
@@ -246,9 +203,16 @@ def detectar_tipo_paragrafo(texto):
     if re.match(r'^\s*[a-z][\.\)]\s+', texto_limpo):
         return 'lista', False, 'left'
     
-    # ETAPA 7: Verificações de conteúdo baseadas em palavras-chave
+    # ETAPA 5: Verificações de conteúdo específico
+    
+    # Seções principais - padrão romano e estrutura específica
+    if re.match(r'^[IVX]+[\s]*[.–—\-]+[\s]*(DOS?|DAS?)[\s]+[A-ZÀÁÂÃÉÊÍÓÔÕÚÇ\s]+$', texto_limpo):
+        return 'secao_principal', True, 'left'
+    
+    # ETAPA 6: Verificações de conteúdo baseadas em palavras-chave
     
     # Título da ação - critérios mais específicos
+    # Verificar se contém "AÇÃO DE" e está em maiúsculas sem ser parte de outro item
     if ('AÇÃO DE' in texto_limpo.upper() and 
         len(texto_limpo) < 150 and 
         texto_limpo.upper().count(' ') >= 2 and  # Ter pelo menos 2 espaços (3 palavras)
@@ -256,13 +220,13 @@ def detectar_tipo_paragrafo(texto):
         not re.match(r'^\s*\d+[\.\)]', texto_limpo)):  # Não ser item numerado
         return 'titulo_acao', True, 'center'
     
-    # ETAPA 8: Verificações de outras características de formatação
+    # ETAPA 7: Verificações de outras características de formatação
     
     # Outros tipos de listas com marcadores diversos
     if re.match(r'^\s*[\-–—*+]\s+', texto_limpo):
         return 'lista', False, 'left'
     
-    # ETAPA 9: Verificações baseadas em análise contextual
+    # ETAPA 8: Verificações baseadas em análise contextual
     
     # Textos que parecem títulos são formatados como normal para compatibilidade
     words = texto_limpo.split()
@@ -272,7 +236,7 @@ def detectar_tipo_paragrafo(texto):
         len(texto_limpo) < 50):
         return 'normal', True, 'left'  # Mantém como normal mas com negrito
     
-    # ETAPA 10: Classificação padrão
+    # ETAPA 9: Classificação padrão
     
     # Parágrafo normal
     return 'normal', False, 'justify'
@@ -346,24 +310,24 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
         # Para itens de documentos específicos (Doc. X)
         elif tipo == 'item_doc':
             aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=False,
-                                       tamanho_fonte=12, espacamento_antes=6,
-                                       espacamento_depois=6, recuo_lista=True)
+                              tamanho_fonte=12, espacamento_antes=6,
+                              espacamento_depois=6, recuo_lista=True)
         
         elif tipo == 'subsecao':
             aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=True,
-                                       tamanho_fonte=12, espacamento_antes=6,
-                                       espacamento_depois=6, recuo_lista=True)
+                              tamanho_fonte=12, espacamento_antes=6,
+                              espacamento_depois=6, recuo_lista=True)
         
         elif tipo == 'citacao':
             aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
-                                       italico=True, tamanho_fonte=11,
-                                       espacamento_antes=6, espacamento_depois=6,
-                                       recuo_lista=True)
+                              italico=True, tamanho_fonte=11,  # Fonte menor e itálico
+                              espacamento_antes=6, espacamento_depois=6,
+                              recuo_lista=True)  # Com recuo para destacar
         
         elif tipo == 'lista':
             aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=False,
-                                       tamanho_fonte=12, espacamento_antes=6,
-                                       espacamento_depois=6, recuo_lista=True)
+                              tamanho_fonte=12, espacamento_antes=3,
+                              espacamento_depois=3, recuo_lista=True)
         
         else:  # normal
             aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
@@ -663,12 +627,6 @@ def main():
                                             "Texto": item["texto"],
                                             "Problema": f"Marcador • detectado como '{item['tipo_detectado']}'"
                                         })
-                                    if ('"' in item["texto"] or "'" in item["texto"]) and item["tipo_detectado"] != "citacao":
-                                        problemas.append({
-                                            "Parágrafo": item["index"],
-                                            "Texto": item["texto"],
-                                            "Problema": f"Possível citação detectada como '{item['tipo_detectado']}'"
-                                        })
                                 
                                 if problemas:
                                     st.table(problemas)
@@ -744,8 +702,6 @@ def main():
         - **Títulos**: Em azul com formatação adequada
         - **Seções principais**: Com linha horizontal
         - **Rodapé**: Em azul escuro com informações do escritório
-        - **Citações**: Em itálico com recuo
-        - **Listas**: Com recuo adequado e alinhamento correto
         
         ### Dicas de Uso
         
