@@ -169,17 +169,16 @@ def detectar_tipo_paragrafo(texto):
     if texto_limpo.startswith('EXMO'):
         return 'cabecalho', True, 'center'
     
-    # ETAPA 2: Verificações para citações - RESTRITA APENAS A TEXTOS COM ASPAS
+    # ETAPA 2: VERIFICAÇÃO DE CITAÇÕES APRIMORADA
     
-    # Verifica se o texto contém aspas simples ou tipográficas
-    tem_aspas = ('"' in texto_limpo or '"' in texto_limpo or '"' in texto_limpo)
+    # Verificar todos os tipos de aspas (retas e curvas)
+    aspas_abertura = ['"', '"', '«', '„', '‹']
+    aspas_fechamento = ['"', '"', '»', '"', '›']
     
-    # Citações entre aspas - apenas textos que realmente contenham aspas
-    if tem_aspas:
-        # Se o texto começa e termina com aspas, ou tem aspas significativas
-        # dentro do texto com extensão considerável, é uma citação
-        if (texto_limpo.startswith('"') or texto_limpo.startswith('"') or
-            re.search(r'[""].*[""]', texto_limpo)):
+    # Verificação EXPLÍCITA de texto que contém aspas
+    for aspas in aspas_abertura + aspas_fechamento:
+        if aspas in texto_limpo:
+            # Se encontrou qualquer tipo de aspas, é uma citação
             return 'citacao', False, 'justify'
     
     # ETAPA 3: Artigos de lei e referências jurídicas específicas
