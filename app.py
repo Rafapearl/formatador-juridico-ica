@@ -221,49 +221,52 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
         tipo, negrito, alinhamento = detectar_tipo_paragrafo(texto)
 
         # Criar novo parágrafo
-        p = doc_novo.add_paragraph()
-        run = p.add_run(texto)
+        # Após criar o parágrafo
+p = doc_novo.add_paragraph()
+run = p.add_run(texto)
 
-        # Aplicar formatação baseada no tipo
-        if tipo == 'cabecalho':
-            aplicar_formatacao_paragrafo(p, alinhamento='center', negrito=True,
-                                         tamanho_fonte=12, espacamento_antes=0,
-                                         espacamento_depois=40)
+# Aplicar formatação baseada no tipo
+if tipo == 'cabecalho':
+    aplicar_formatacao_paragrafo(p, alinhamento='center', negrito=True,
+                               tamanho_fonte=12, espacamento_antes=0,
+                               espacamento_depois=40)
 
-        elif tipo == 'titulo_acao':
-            # Título em azul, centralizado, negrito
-            aplicar_formatacao_paragrafo(p, alinhamento='center', negrito=True,
-                                         tamanho_fonte=12, espacamento_antes=30,
-                                         espacamento_depois=24,
-                                         cor_texto=FORMATO_CONFIG['cor_titulo'])
+elif tipo == 'titulo_acao':
+    # Título em azul, centralizado, negrito
+    aplicar_formatacao_paragrafo(p, alinhamento='center', negrito=True,
+                               tamanho_fonte=12, espacamento_antes=30,
+                               espacamento_depois=24,
+                               cor_texto=FORMATO_CONFIG['cor_titulo'])
 
-        elif tipo == 'secao_principal':
-            # Seção principal em azul com linha horizontal
-            aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=True,
-                                         tamanho_fonte=12, espacamento_antes=12,
-                                         espacamento_depois=6,
-                                         cor_texto=FORMATO_CONFIG['cor_secao'])
-            # Adicionar linha horizontal cinza
-            adicionar_linha_horizontal(p, FORMATO_CONFIG['cor_linha'])
+elif tipo == 'secao_principal':
+    # Seção principal em azul com linha horizontal
+    aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=True,
+                               tamanho_fonte=12, espacamento_antes=12,
+                               espacamento_depois=6,
+                               cor_texto=FORMATO_CONFIG['cor_secao'])
+    # Adicionar linha horizontal cinza
+    adicionar_linha_horizontal(p, FORMATO_CONFIG['cor_linha'])
 
-        elif tipo == 'subsecao':
-            aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=True,
-                                         tamanho_fonte=12, espacamento_antes=6,
-                                         espacamento_depois=6)
+# NOVO: Para itens de documentos específicos (Doc. X)
+elif tipo == 'item_doc':
+    aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=False,
+                               tamanho_fonte=12, espacamento_antes=6,
+                               espacamento_depois=6, recuo_lista=True)
 
-        elif tipo == 'citacao':
-            aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
-                                         italico=True, tamanho_fonte=11,
-                                         espacamento_antes=6, espacamento_depois=6)
-        elif tipo == 'item_doc':
-            aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=False,
-                                         tamanho_fonte=12, espacamento_antes=6,
-                                         espacamento_depois=6)
+elif tipo == 'subsecao':
+    aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=True,
+                               tamanho_fonte=12, espacamento_antes=6,
+                               espacamento_depois=6, recuo_lista=True)
 
-        else:  # normal
-            aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
-                                         tamanho_fonte=12, espacamento_antes=6,
-                                         espacamento_depois=6)
+elif tipo == 'citacao':
+    aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
+                               italico=True, tamanho_fonte=11,
+                               espacamento_antes=6, espacamento_depois=6)
+
+else:  # normal
+    aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
+                               tamanho_fonte=12, espacamento_antes=6,
+                               espacamento_depois=6)
         
 
     # Processar tabelas do documento original
