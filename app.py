@@ -118,8 +118,8 @@ def adicionar_linha_horizontal(paragrafo, cor_rgb=(192, 192, 192)):
     pPr.append(pBdr)
 
 def aplicar_formatacao_paragrafo(paragrafo, alinhamento='justify', negrito=False,
-                                  italico=False, tamanho_fonte=12, espacamento_antes=6,
-                                  espacamento_depois=6, espacamento_linha=1.5, cor_texto=None):
+                                italico=False, tamanho_fonte=12, espacamento_antes=6,
+                                espacamento_depois=6, espacamento_linha=1.5, cor_texto=None):
     # Alinhamento
     if alinhamento == 'center':
         paragrafo.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -141,7 +141,6 @@ def aplicar_formatacao_paragrafo(paragrafo, alinhamento='justify', negrito=False
         run.italic = italico
         if cor_texto:
             run.font.color.rgb = RGBColor(*cor_texto)
-
 def detectar_tipo_paragrafo(texto):
     texto_limpo = texto.strip()
 
@@ -153,12 +152,17 @@ def detectar_tipo_paragrafo(texto):
     if 'AÇÃO DE' in texto_limpo.upper() and len(texto_limpo) < 150:
         return 'titulo_acao', True, 'center'
 
-    # Seções principais
+    # Seções principais (I., II., III. ou I –, II –) - com linha horizontal
     if re.match(r'^[IVX]+[\s]*[.–—\-]+[\s]*(DOS?|DAS?)[\s]+[A-ZÀÁÂÃÉÊÍÓÔÕÚÇ\s]+$', texto_limpo):
         return 'secao_principal', True, 'left'
 
-    # Subseções com bullet ou 'Doc. X – ...'
-    if texto_limpo.startswith('▪') or texto_limpo.startswith('•') or re.match(r'^Doc\.\s\d+\s–\s.*', texto_limpo):
+    # Listas com marcadores ou numerações (ampliada para detectar mais formatos)
+    if (texto_limpo.startswith('▪') or 
+        texto_limpo.startswith('•') or 
+        re.match(r'^Doc\.\s+\d+\s+[–\-]', texto_limpo) or  # Formato "Doc. 5 –"
+        re.match(r'^\d+\.\s+', texto_limpo) or           # Formato "1. "
+        re.match(r'^[a-z]\)\s+', texto_limpo) or         # Formato "a) "
+        re.match(r'^[A-Z]\)\s+', texto_limpo)):           # Formato "A) "
         return 'subsecao', True, 'left'
 
     # Citações jurídicas
@@ -222,10 +226,13 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
             # Adicionar linha horizontal cinza
             adicionar_linha_horizontal(p, FORMATO_CONFIG['cor_linha'])
 
-        elif tipo == 'subsecao':
-            aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=True,
-                                         tamanho_fonte=12, espacamento_antes=6,
-                                         espacamento_depois=6)
+       # Na função formatar_documento: 
+     elif tipo == 'subsecao':
+    # Aplicar consistentemente para todos os itens de lista
+         p.paragraph_format.left_indent = Cm(1.0)  # Recuo padrão para todos os itens de lista
+         aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=True,
+                                tamanho_fonte=12, espacamento_antes=6,
+                                espacamento_depois=6)
 
         elif tipo == 'citacao':
             aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
