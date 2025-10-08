@@ -59,7 +59,6 @@ def criar_cabecalho(doc, logo_path=None):
     p.paragraph_format.space_after = Pt(24)
     p.paragraph_format.space_before = Pt(12)
 
-
 def criar_rodape(doc, config):
     """
     Cria rodapé personalizado com fundo colorido e informações do escritório.
@@ -106,7 +105,6 @@ def criar_rodape(doc, config):
     run2.font.name = 'Arial'
     p.add_run("\n\n\n")  # Add extra lines at the bottom
 
-
 def adicionar_linha_horizontal(paragrafo, cor_rgb=(192, 192, 192)):
     p = paragrafo._element
     pPr = p.get_or_add_pPr()
@@ -118,7 +116,6 @@ def adicionar_linha_horizontal(paragrafo, cor_rgb=(192, 192, 192)):
     bottom.set(qn('w:color'), '{:02x}{:02x}{:02x}'.format(*cor_rgb))
     pBdr.append(bottom)
     pPr.append(pBdr)
-
 
 def aplicar_formatacao_paragrafo(paragrafo, alinhamento='justify', negrito=False,
                                   italico=False, tamanho_fonte=12, espacamento_antes=6,
@@ -145,7 +142,6 @@ def aplicar_formatacao_paragrafo(paragrafo, alinhamento='justify', negrito=False
         if cor_texto:
             run.font.color.rgb = RGBColor(*cor_texto)
 
-
 def detectar_tipo_paragrafo(texto):
     texto_limpo = texto.strip()
 
@@ -161,8 +157,8 @@ def detectar_tipo_paragrafo(texto):
     if re.match(r'^[IVX]+[\s]*[.–—\-]+[\s]*(DOS?|DAS?)[\s]+[A-ZÀÁÂÃÉÊÍÓÔÕÚÇ\s]+$', texto_limpo):
         return 'secao_principal', True, 'left'
 
-    # Subseções com bullet
-    if texto_limpo.startswith('▪') or texto_limpo.startswith('•'):
+    # Subseções com bullet ou 'Doc. X – ...'
+    if texto_limpo.startswith('▪') or texto_limpo.startswith('•') or re.match(r'^Doc\.\s\d+\s–\s.*', texto_limpo):
         return 'subsecao', True, 'left'
 
     # Citações jurídicas
@@ -173,7 +169,6 @@ def detectar_tipo_paragrafo(texto):
 
     # Parágrafo normal
     return 'normal', False, 'justify'
-
 
 def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
     # Criar novo documento
@@ -300,7 +295,6 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
     doc_novo.save(doc_saida_path)
     return doc_saida_path
 
-
 def criar_arquivo_zip(arquivos):
     """Cria um arquivo ZIP contendo todos os arquivos processados"""
     zip_buffer = io.BytesIO()
@@ -311,7 +305,6 @@ def criar_arquivo_zip(arquivos):
     
     zip_buffer.seek(0)
     return zip_buffer
-
 
 def main():
     st.set_page_config(
@@ -438,67 +431,53 @@ def main():
                     # Atualizar status
                     status_text.info(f"⏳ Processando: {doc_file.name} ({i+1}/{len(uploaded_files)})")
                     
-                    # Salvar arquivo temporariamente
-                    input_path = os.path.join(temp_dir, doc_file.name)
-                    with open(input_path, "wb") as f:
-                        f.write(doc_file.getvalue())
+                    # Ler o documento
+                    doc = Document(doc_file)
                     
-                    # Gerar nome de saída
-                    nome_base = os.path.splitext(doc_file.name)[0]
-                    output_path = os.path.join(temp_dir, f"{nome_base}_FORMATADO.docx")
+                    # Definir caminho de saída
+                    output_filename = f"formatado_{datetime.now().strftime('%Y%m%d%H%M%S')}_{i+1}.docx"
+                    output_path = os.path.join(temp_dir, output_filename)
                     
-                    # Formatar documento
-                    doc = Document(input_path)
+                    # Formatar e salvar
                     formatar_documento(doc, output_path, logo_path)
                     arquivos_processados.append(output_path)
                     
-                    # Atualizar progresso
-                    progress = int(((i + 1) / len(uploaded_files)) * 100)
-                    progress_bar.progress(progress)
-                    processed_count.info(f"✅ Processados: {i+1}/{len(uploaded_files)} documentos")
-                    
+                    # Atualizar barra de progresso
+                    progress_bar.progress((i + 1) / len(uploaded_files))
+                
                 except Exception as e:
-                    errors.append((doc_file.name, str(e)))
+                    errors.append(f"Erro ao processar '{doc_file.name}': {e}")
             
-            # Finalizar processamento
+            # Atualizar status final
             if arquivos_processados:
-                status_text.success(f"✅ Processamento concluído! {len(arquivos_processados)} documento(s) formatado(s).")
-                progress_bar.progress(100)
-                
-                # Mostrar erros, se houver
-                if errors:
-                    with st.expander(f"⚠️ Erros ({len(errors)})"):
-                        for file_name, error_msg in errors:
-                            st.error(f"Arquivo: {file_name} - Erro: {error_msg}")
-                
-                # Adicionar espaço e linha separadora
-                st.markdown("---")
-                
-                # ETAPA 4: Download - Em seção separada
-                st.header("4️⃣ Download dos Documentos Formatados")
-                
-                # Criar nome para o arquivo ZIP
-                data_atual = datetime.now().strftime("%Y%m%d")
-                zip_filename = f"Documentos_Formatados_ICA_{data_atual}.zip"
-                
-                # Botão grande e destacado para download em lote
+                status_text.success("✅ Processamento concluído!")
+                processed_count.write(f"{len(arquivos_processados)} de {len(uploaded_files)} documentos processados com sucesso.")
+            else:
+                status_text.error("❌ Nenhum documento foi processado.")
+            
+            # Mostrar erros, se houver
+            if errors:
+                st.error("**Ocorreram os seguintes erros:**")
+                for error in errors:
+                    st.write(error)
+
+        # ETAPA 4: Download dos Arquivos - Em seção separada
+        st.header("4️⃣ Download dos Arquivos")
+        
+        download_container = st.container()
+        with download_container:
+            if arquivos_processados:
+                # Download de todos os arquivos em um ZIP
                 if len(arquivos_processados) > 1:
-                    st.subheader("📦 Download de todos os arquivos")
+                    st.subheader("📦 Baixar todos como ZIP")
                     zip_data = criar_arquivo_zip(arquivos_processados)
-                    
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.download_button(
-                            label="⬇️ BAIXAR TODOS OS DOCUMENTOS DE UMA VEZ",
-                            data=zip_data,
-                            file_name=zip_filename,
-                            mime="application/zip",
-                            use_container_width=True,
-                            type="primary",
-                        )
-                    
-                    with col2:
-                        st.info(f"{len(arquivos_processados)} arquivos no ZIP")
+                    st.download_button(
+                        label="⬇️ Baixar todos os arquivos (.zip)",
+                        data=zip_data,
+                        file_name="documentos_formatados.zip",
+                        mime="application/zip",
+                        use_container_width=True
+                    )
                     
                     # Linha separadora
                     st.markdown("---")
