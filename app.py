@@ -322,6 +322,9 @@ def main():
 
     st.title("📄 Formatador Jurídico ICA Advocacia")
     st.write("Ferramenta para formatação automática de documentos jurídicos.")
+    
+    # Adicionar espaço e linha separadora para melhor organização visual
+    st.markdown("---")
 
     # Sidebar para configurações
     with st.sidebar:
@@ -330,40 +333,51 @@ def main():
         
         # Guardar o logo padrão
         save_logo = st.checkbox("Salvar logo para uso futuro", value=True)
+    
+    # ETAPA 1: Upload do Logo - Em seção separada e bem visível
+    st.header("1️⃣ Upload do Logo ICA")
+    
+    # Criar caixa para o upload do logo
+    logo_container = st.container()
+    with logo_container:
+        logo_col1, logo_col2 = st.columns([2, 1])
+        
+        with logo_col1:
+            logo_file = st.file_uploader("Faça upload do logo ICA (arquivo PNG, JPG)", 
+                                        type=["png", "jpg", "jpeg"], 
+                                        key="logo")
 
-    # Layout principal dividido em colunas
-    col1, col2 = st.columns([1, 2])
+        with logo_col2:
+            # Verificar se existe logo salvo em cache
+            if 'logo_cache' in st.session_state and logo_file is None:
+                logo_path = st.session_state.logo_cache
+                st.success("✅ Logo salvo em uso")
+                st.image(logo_path, width=150)
+            elif logo_file is not None:
+                # Salvar o logo em um arquivo temporário
+                temp_logo = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+                temp_logo.write(logo_file.getvalue())
+                logo_path = temp_logo.name
 
-    with col1:
-        # Upload do logo
-        st.header("1. Upload do Logo ICA")
-        logo_file = st.file_uploader("Faça upload do logo ICA (arquivo PNG)", type=["png", "jpg", "jpeg"], key="logo")
-
-        # Verificar se existe logo salvo em cache
-        if 'logo_cache' in st.session_state and logo_file is None:
-            logo_path = st.session_state.logo_cache
-            st.success("✅ Usando logo salvo anteriormente")
-            st.image(logo_path, width=180)
-        elif logo_file is not None:
-            # Salvar o logo em um arquivo temporário
-            temp_logo = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-            temp_logo.write(logo_file.getvalue())
-            logo_path = temp_logo.name
-
-            # Salvar em cache se a opção estiver marcada
-            if save_logo:
-                st.session_state.logo_cache = logo_path
-            
-            # Mostrar confirmação e preview
-            st.success("✅ Logo carregado com sucesso!")
-            st.image(logo_file, width=180)
-        else:
-            logo_path = None
-            st.warning("⚠️ Nenhum logo carregado. O cabeçalho será criado sem logo.")
-
-    with col2:
-        # Upload dos documentos
-        st.header("2. Upload dos Documentos Word")
+                # Salvar em cache se a opção estiver marcada
+                if save_logo:
+                    st.session_state.logo_cache = logo_path
+                
+                # Mostrar confirmação e preview
+                st.success("✅ Logo carregado!")
+                st.image(logo_file, width=150)
+            else:
+                logo_path = None
+                st.info("Logo não carregado. O cabeçalho será criado sem logo.")
+    
+    # Adicionar espaço e linha separadora para melhor organização visual
+    st.markdown("---")
+    
+    # ETAPA 2: Upload dos Documentos Word - Em seção separada
+    st.header("2️⃣ Upload dos Documentos Word")
+    
+    doc_container = st.container()
+    with doc_container:
         uploaded_files = st.file_uploader(
             "Selecione os documentos Word (.docx) para formatação",
             type=["docx"], 
@@ -372,32 +386,35 @@ def main():
         )
 
         if not uploaded_files:
-            st.warning("⚠️ Nenhum documento carregado.")
+            st.warning("⚠️ Nenhum documento carregado ainda.")
         else:
             st.success(f"✅ {len(uploaded_files)} documento(s) carregado(s)")
             
             # Mostrar lista de arquivos carregados
-            with st.expander(f"📋 Arquivos carregados ({len(uploaded_files)})"):
+            with st.expander(f"📋 Ver arquivos carregados ({len(uploaded_files)})"):
                 for i, doc_file in enumerate(uploaded_files):
                     st.write(f"{i+1}. {doc_file.name}")
+    
+    # Adicionar espaço e linha separadora para melhor organização visual
+    st.markdown("---")
 
-    # Área de formatação e processamento
-    st.header("3. Formatação")
+    # ETAPA 3: Formatação - Em seção separada
+    st.header("3️⃣ Formatação")
     
-    # Coluna para opções e controles
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        # Botão para formatar documentos individuais
-        format_button = st.button(
-            "Formatar Documentos", 
-            disabled=(len(uploaded_files) == 0),
-            type="primary",
-            use_container_width=True
-        )
+    # Botão para formatar documentos
+    format_button = st.button(
+        "Formatar Documentos", 
+        disabled=(len(uploaded_files) == 0 or (logo_path is None and 'logo_cache' not in st.session_state)),
+        type="primary",
+        use_container_width=True
+    )
 
     # Processamento dos documentos quando o botão é pressionado
     if format_button and len(uploaded_files) > 0:
+        # Usar o logo em cache se disponível e nenhum foi carregado
+        if logo_path is None and 'logo_cache' in st.session_state:
+            logo_path = st.session_state.logo_cache
+            
         # Criar área de status e progresso
         progress_container = st.container()
         
@@ -454,36 +471,47 @@ def main():
                         for file_name, error_msg in errors:
                             st.error(f"Arquivo: {file_name} - Erro: {error_msg}")
                 
-                # Área de download
-                st.header("4. Download dos Documentos Formatados")
+                # Adicionar espaço e linha separadora
+                st.markdown("---")
+                
+                # ETAPA 4: Download - Em seção separada
+                st.header("4️⃣ Download dos Documentos Formatados")
                 
                 # Criar nome para o arquivo ZIP
                 data_atual = datetime.now().strftime("%Y%m%d")
                 zip_filename = f"Documentos_Formatados_ICA_{data_atual}.zip"
                 
-                # Botão grande para download em lote (ZIP)
+                # Botão grande e destacado para download em lote
                 if len(arquivos_processados) > 1:
+                    st.subheader("📦 Download de todos os arquivos")
                     zip_data = criar_arquivo_zip(arquivos_processados)
                     
-                    st.download_button(
-                        label=f"⬇️ BAIXAR TODOS OS DOCUMENTOS DE UMA VEZ (ZIP)",
-                        data=zip_data,
-                        file_name=zip_filename,
-                        mime="application/zip",
-                        use_container_width=True,
-                        type="primary",
-                    )
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.download_button(
+                            label="⬇️ BAIXAR TODOS OS DOCUMENTOS DE UMA VEZ",
+                            data=zip_data,
+                            file_name=zip_filename,
+                            mime="application/zip",
+                            use_container_width=True,
+                            type="primary",
+                        )
                     
-                    st.info(f"O arquivo ZIP contém {len(arquivos_processados)} documentos formatados.")
+                    with col2:
+                        st.info(f"{len(arquivos_processados)} arquivos no ZIP")
                     
                     # Linha separadora
                     st.markdown("---")
-                    st.markdown("#### Downloads Individuais")
                 
-                # Grid de botões de download para cada arquivo individual
-                file_cols = st.columns(min(3, len(arquivos_processados)))
+                # Downloads individuais em seção separada
+                st.subheader("📄 Downloads individuais")
+                
+                # Criar grid mais organizado para os arquivos individuais
+                num_cols = 2  # Reduzido para 2 colunas para melhor espaçamento
+                file_cols = st.columns(num_cols)
+                
                 for i, file_path in enumerate(arquivos_processados):
-                    col_idx = i % 3
+                    col_idx = i % num_cols
                     with file_cols[col_idx]:
                         file_name = os.path.basename(file_path)
                         with open(file_path, "rb") as file:
@@ -495,12 +523,14 @@ def main():
                                 key=f"download_{i}",
                                 use_container_width=True
                             )
-                        st.write("")  # Espaço entre botões
+                        # Adicionar espaço entre botões
+                        st.write("")
             else:
                 st.error("❌ Nenhum documento foi processado com sucesso.")
 
-    # Informações adicionais
-    with st.expander("ℹ️ Informações Adicionais"):
+    # Informações adicionais em rodapé
+    st.markdown("---")
+    with st.expander("ℹ️ Informações sobre o Formatador"):
         st.markdown("""
         ### Sobre a Formatação
         
@@ -517,6 +547,10 @@ def main():
         - Para melhor organização, use nomes descritivos para seus arquivos
         - O logo será mantido para uso futuro se você marcar a opção na barra lateral
         """)
+    
+    # Adicionar rodapé discreto da aplicação
+    st.markdown("---")
+    st.markdown("<div style='text-align: center; color: gray; font-size: 0.8em;'>Formatador Jurídico ICA Advocacia - Versão 1.0</div>", unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
