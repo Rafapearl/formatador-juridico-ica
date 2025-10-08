@@ -153,25 +153,43 @@ def aplicar_formatacao_paragrafo(paragrafo, alinhamento='justify', negrito=False
 
 
 def detectar_tipo_paragrafo(texto):
+    """
+    Detecta o tipo de parágrafo com base em características específicas.
+    Implementa uma abordagem escalável com verificações em ordem de prioridade.
+    """
     texto_limpo = texto.strip()
-    
-    # ETAPA 1: Verificações de estrutura específica
+
+    # ETAPA 1: Verificações de estrutura específica (maior prioridade)
+
+    # Itens Doc. - detecção robusta
     if re.match(r'^\s*Doc\.\s*\d+', texto_limpo):
         return 'item_doc', False, 'left'
-    
+
+    # Cabeçalho judicial
     if texto_limpo.startswith('EXMO'):
         return 'cabecalho', True, 'center'
-    
-    # ETAPA 2: VERIFICAÇÃO DE CITAÇÕES APRIMORADA
-    # Verificar se o texto está entre aspas
-    aspas_abertura = ['"', '“', '‘', '«', '„', '‹']
-    aspas_fechamento = ['"', '”', '’', '»', '“', '›']
-    
-    # Regex para verificar se o texto começa e termina com algum dos tipos de aspas
-    if any(texto_limpo.startswith(aspas) and texto_limpo.endswith(aspas) for aspas in aspas_abertura):
-        return 'citacao', False, 'justify'
 
+    # ETAPA 2: VERIFICAÇÃO DE CITAÇÕES APRIMORADA
+    # Lista completa de aspas (incluindo Unicode e casos especiais)
+    aspas = [
+        # Aspas retas
+        '"', "'",
+        # Aspas curvas
+        '“', '”', '‘', '’', 
+        # Aspas angulares
+        '«', '»', '‹', '›',
+        # Aspas duplas baixas
+        '„', '‟',
+        # Aspas orientais
+        '「', '」', '『', '』'
+    ]
+
+    # Verificar qualquer tipo de aspas no texto
+    if any(aspas in texto_limpo for aspas in aspas):
+        return 'citacao', False, 'justify'
+    
     # ETAPA 3: Artigos de lei e referências jurídicas específicas
+    # Estas são citações mesmo sem aspas, por serem referências técnicas
     if (re.match(r'Art\.\s*\d+', texto_limpo) or
         re.match(r'§\s*\d+', texto_limpo) or
         re.search(r'inciso\s+[IVX]+', texto_limpo) or
@@ -179,40 +197,55 @@ def detectar_tipo_paragrafo(texto):
         return 'citacao', False, 'justify'
     
     # ETAPA 4: Verificações de marcadores e listas
+    
+    # Marcadores de lista com espaços ou não
     if re.match(r'^\s*[•▪■□◊○●◉◎◌◦⦿⦾]+\s+', texto_limpo):
         return 'subsecao', True, 'left'
     
+    # Listas numeradas (números seguidos de ponto ou parêntese)
     if re.match(r'^\s*\d+[\.\)]\s+', texto_limpo):
         return 'lista', False, 'left'
     
+    # Listas com letras (a., b., etc.)
     if re.match(r'^\s*[a-z][\.\)]\s+', texto_limpo):
         return 'lista', False, 'left'
     
     # ETAPA 5: Verificações de conteúdo específico
-    if re.match(r'^[IVX]+[\s]*[.–—\-]+[\s]*(DOS?|DAS?)[\s]+[A-ZÀÁÂÃÉÊÍÓÔÕÚÇ\s]+, texto_limpo):
+    
+    # Seções principais - padrão romano e estrutura específica
+    if re.match(r'^[IVX]+[\s]*[.–—\-]+[\s]*(DOS?|DAS?)[\s]+[A-ZÀÁÂÃÉÊÍÓÔÕÚÇ\s]+$', texto_limpo):
         return 'secao_principal', True, 'left'
     
     # ETAPA 6: Verificações de conteúdo baseadas em palavras-chave
+    
+    # Título da ação - critérios mais específicos
+    # Verificar se contém "AÇÃO DE" e está em maiúsculas sem ser parte de outro item
     if ('AÇÃO DE' in texto_limpo.upper() and 
         len(texto_limpo) < 150 and 
-        texto_limpo.upper().count(' ') >= 2 and 
-        not any(marcador in texto_limpo for marcador in ['•', '▪', '-', '*']) and 
-        not re.match(r'^\s*\d+[\.\)]', texto_limpo)):
+        texto_limpo.upper().count(' ') >= 2 and  # Ter pelo menos 2 espaços (3 palavras)
+        not any(marcador in texto_limpo for marcador in ['•', '▪', '-', '*']) and  # Não conter marcadores
+        not re.match(r'^\s*\d+[\.\)]', texto_limpo)):  # Não ser item numerado
         return 'titulo_acao', True, 'center'
     
     # ETAPA 7: Verificações de outras características de formatação
+    
+    # Outros tipos de listas com marcadores diversos
     if re.match(r'^\s*[\-–—*+]\s+', texto_limpo):
         return 'lista', False, 'left'
     
-    # ETAPA 8: Análise contextual
+    # ETAPA 8: Verificações baseadas em análise contextual
+    
+    # Textos que parecem títulos são formatados como normal para compatibilidade
     words = texto_limpo.split()
     if (2 <= len(words) <= 7 and 
         all(w[0].isupper() for w in words if len(w) > 3) and 
         not texto_limpo.endswith('.') and
         len(texto_limpo) < 50):
-        return 'normal', True, 'left'
+        return 'normal', True, 'left'  # Mantém como normal mas com negrito
     
     # ETAPA 9: Classificação padrão
+    
+    # Parágrafo normal
     return 'normal', False, 'justify'
 
 
