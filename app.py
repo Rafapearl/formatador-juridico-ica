@@ -118,8 +118,8 @@ def adicionar_linha_horizontal(paragrafo, cor_rgb=(192, 192, 192)):
     pPr.append(pBdr)
 
 def aplicar_formatacao_paragrafo(paragrafo, alinhamento='justify', negrito=False,
-                                italico=False, tamanho_fonte=12, espacamento_antes=6,
-                                espacamento_depois=6, espacamento_linha=1.5, cor_texto=None):
+                                   italico=False, tamanho_fonte=12, espacamento_antes=6,
+                                   espacamento_depois=6, espacamento_linha=1.5, cor_texto=None):
     # Alinhamento
     if alinhamento == 'center':
         paragrafo.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -141,6 +141,7 @@ def aplicar_formatacao_paragrafo(paragrafo, alinhamento='justify', negrito=False
         run.italic = italico
         if cor_texto:
             run.font.color.rgb = RGBColor(*cor_texto)
+
 def detectar_tipo_paragrafo(texto):
     texto_limpo = texto.strip()
 
@@ -153,7 +154,7 @@ def detectar_tipo_paragrafo(texto):
         return 'titulo_acao', True, 'center'
 
     # Seções principais (I., II., III. ou I –, II –) - com linha horizontal
-    if re.match(r'^[IVX]+[\s]*[.–—\-]+[\s]*(DOS?|DAS?)[\s]+[A-ZÀÁÂÃÉÊÍÓÔÕÚÇ\s]+$', texto_limpo):
+    if re.match(r'^[IVX]+[\s]*[.–—\-]+[\s]*(DOS?|DAS?)[\s]+[A-ZÀÁÂÃÉÊÍÓÔÕÚÇ\s]+, texto_limpo):
         return 'secao_principal', True, 'left'
 
     # Listas com marcadores ou numerações (ampliada para detectar mais formatos)
@@ -207,42 +208,41 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
         # Aplicar formatação baseada no tipo
         if tipo == 'cabecalho':
             aplicar_formatacao_paragrafo(p, alinhamento='center', negrito=True,
-                                         tamanho_fonte=12, espacamento_antes=0,
-                                         espacamento_depois=40)
+                                          tamanho_fonte=12, espacamento_antes=0,
+                                          espacamento_depois=40)
 
         elif tipo == 'titulo_acao':
             # Título em azul, centralizado, negrito
             aplicar_formatacao_paragrafo(p, alinhamento='center', negrito=True,
-                                         tamanho_fonte=12, espacamento_antes=30,
-                                         espacamento_depois=24,
-                                         cor_texto=FORMATO_CONFIG['cor_titulo'])
+                                          tamanho_fonte=12, espacamento_antes=30,
+                                          espacamento_depois=24,
+                                          cor_texto=FORMATO_CONFIG['cor_titulo'])
 
         elif tipo == 'secao_principal':
             # Seção principal em azul com linha horizontal
             aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=True,
-                                         tamanho_fonte=12, espacamento_antes=12,
-                                         espacamento_depois=6,
-                                         cor_texto=FORMATO_CONFIG['cor_secao'])
+                                          tamanho_fonte=12, espacamento_antes=12,
+                                          espacamento_depois=6,
+                                          cor_texto=FORMATO_CONFIG['cor_secao'])
             # Adicionar linha horizontal cinza
             adicionar_linha_horizontal(p, FORMATO_CONFIG['cor_linha'])
 
-       # Na função formatar_documento: 
-         elif tipo == 'subsecao':
-    # Aplicar consistentemente para todos os itens de lista
-             p.paragraph_format.left_indent = Cm(1.0)  # Recuo padrão para todos os itens de lista
-             aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=True,
-                                tamanho_fonte=12, espacamento_antes=6,
-                                espacamento_depois=6)
+        elif tipo == 'subsecao':
+            # Aplicar consistentemente para todos os itens de lista
+            p.paragraph_format.left_indent = Cm(1.0)  # Recuo padrão para todos os itens de lista
+            aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=True,
+                                          tamanho_fonte=12, espacamento_antes=6,
+                                          espacamento_depois=6)
 
         elif tipo == 'citacao':
             aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
-                                         italico=True, tamanho_fonte=11,
-                                         espacamento_antes=6, espacamento_depois=6)
+                                          italico=True, tamanho_fonte=11,
+                                          espacamento_antes=6, espacamento_depois=6)
 
         else:  # normal
             aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
-                                         tamanho_fonte=12, espacamento_antes=6,
-                                         espacamento_depois=6)
+                                          tamanho_fonte=12, espacamento_antes=6,
+                                          espacamento_depois=6)
 
     # Processar tabelas do documento original
     for table in doc_entrada.tables:
@@ -289,9 +289,9 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
             # Adicionar configuração de moldura para estender além das margens com altura fixa
             from docx.oxml import parse_xml
             frame_xml = parse_xml(
-            '<w:framePr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
-            'w:w="13000" w:h="2500" w:wrap="around" w:vAnchor="page" w:hAnchor="page" w:xAlign="center" />'
-             )
+                '<w:framePr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+                'w:w="13000" w:h="2500" w:wrap="around" w:vAnchor="page" w:hAnchor="page" w:xAlign="center" />'
+            )
             p_element.append(frame_xml)
 
             # Definir espaçamento interno para o rodapé ter altura de 2.4cm
@@ -322,7 +322,7 @@ def main():
 
     st.title("📄 Formatador Jurídico ICA Advocacia")
     st.write("Ferramenta para formatação automática de documentos jurídicos.")
-    
+
     # Adicionar espaço e linha separadora para melhor organização visual
     st.markdown("---")
 
@@ -330,22 +330,22 @@ def main():
     with st.sidebar:
         st.header("⚙️ Configurações")
         st.write("**Opções de formatação:**")
-        
+
         # Guardar o logo padrão
         save_logo = st.checkbox("Salvar logo para uso futuro", value=True)
-    
+
     # ETAPA 1: Upload do Logo - Em seção separada e bem visível
     st.header("1️⃣ Upload do Logo ICA")
-    
+
     # Criar caixa para o upload do logo
     logo_container = st.container()
     with logo_container:
         logo_col1, logo_col2 = st.columns([2, 1])
-        
+
         with logo_col1:
             logo_file = st.file_uploader("Faça upload do logo ICA (arquivo PNG, JPG)", 
-                                        type=["png", "jpg", "jpeg"], 
-                                        key="logo")
+                                          type=["png", "jpg", "jpeg"], 
+                                          key="logo")
 
         with logo_col2:
             # Verificar se existe logo salvo em cache
@@ -362,20 +362,20 @@ def main():
                 # Salvar em cache se a opção estiver marcada
                 if save_logo:
                     st.session_state.logo_cache = logo_path
-                
+
                 # Mostrar confirmação e preview
                 st.success("✅ Logo carregado!")
                 st.image(logo_file, width=150)
             else:
                 logo_path = None
                 st.info("Logo não carregado. O cabeçalho será criado sem logo.")
-    
+
     # Adicionar espaço e linha separadora para melhor organização visual
     st.markdown("---")
-    
+
     # ETAPA 2: Upload dos Documentos Word - Em seção separada
     st.header("2️⃣ Upload dos Documentos Word")
-    
+
     doc_container = st.container()
     with doc_container:
         uploaded_files = st.file_uploader(
@@ -393,14 +393,14 @@ def main():
             # Mostrar lista de arquivos carregados
             with st.expander(f"📋 Ver arquivos carregados ({len(uploaded_files)})"):
                 for i, doc_file in enumerate(uploaded_files):
-                    st.write(f"{i+1}. {doc_file.name}")
-    
+                    st.write(f"{i + 1}. {doc_file.name}")
+
     # Adicionar espaço e linha separadora para melhor organização visual
     st.markdown("---")
 
     # ETAPA 3: Formatação - Em seção separada
     st.header("3️⃣ Formatação")
-    
+
     # Botão para formatar documentos
     format_button = st.button(
         "Formatar Documentos", 
@@ -436,13 +436,13 @@ def main():
             for i, doc_file in enumerate(uploaded_files):
                 try:
                     # Atualizar status
-                    status_text.info(f"⏳ Processando: {doc_file.name} ({i+1}/{len(uploaded_files)})")
+                    status_text.info(f"⏳ Processando: {doc_file.name} ({i + 1}/{len(uploaded_files)})")
                     
                     # Ler o documento
                     doc = Document(doc_file)
                     
                     # Definir caminho de saída
-                    output_filename = f"formatado_{datetime.now().strftime('%Y%m%d%H%M%S')}_{i+1}.docx"
+                    output_filename = f"formatado_{datetime.now().strftime('%Y%m%d%H%M%S')}_{i + 1}.docx"
                     output_path = os.path.join(temp_dir, output_filename)
                     
                     # Formatar e salvar
@@ -533,7 +533,7 @@ def main():
         - Para melhor organização, use nomes descritivos para seus arquivos
         - O logo será mantido para uso futuro se você marcar a opção na barra lateral
         """)
-    
+
     # Adicionar rodapé discreto da aplicação
     st.markdown("---")
     st.markdown("<div style='text-align: center; color: gray; font-size: 0.8em;'>Formatador Jurídico ICA Advocacia - Versão 1.0</div>", unsafe_allow_html=True)
