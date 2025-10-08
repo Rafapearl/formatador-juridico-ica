@@ -227,10 +227,10 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
             adicionar_linha_horizontal(p, FORMATO_CONFIG['cor_linha'])
 
        # Na função formatar_documento: 
-     elif tipo == 'subsecao':
+         elif tipo == 'subsecao':
     # Aplicar consistentemente para todos os itens de lista
-         p.paragraph_format.left_indent = Cm(1.0)  # Recuo padrão para todos os itens de lista
-         aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=True,
+             p.paragraph_format.left_indent = Cm(1.0)  # Recuo padrão para todos os itens de lista
+             aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=True,
                                 tamanho_fonte=12, espacamento_antes=6,
                                 espacamento_depois=6)
 
