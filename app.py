@@ -163,8 +163,8 @@ def detectar_tipo_paragrafo(texto):
     if 'AÇÃO DE' in texto_limpo.upper() and len(texto_limpo) < 150:
         return 'titulo_acao', True, 'center'
     
-    # NOVO: Identificar especificamente os itens "Doc."
-    if re.match(r'^\s*Doc\.\s*\d+\s*[–—\-]+', texto_limpo):
+    # CORRIGIDO: Identificar especificamente os itens "Doc." com padrão mais flexível
+    if re.match(r'^\s*Doc\.\s*\d+', texto_limpo):
         return 'item_doc', False, 'left'  # Formato normal (não azul)
 
     # Seções principais
