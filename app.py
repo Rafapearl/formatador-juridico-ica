@@ -162,8 +162,8 @@ def detectar_tipo_paragrafo(texto):
         return 'secao_principal', True, 'left'
 
     # Subseções com bullet
-    if texto_limpo.startswith('▪') or texto_limpo.startswith('•'):
-        return 'subsecao', True, 'left'
+    if re.match(r'^\s*[•▪\-*]\s+', texto_limpo) or re.match(r'^\s*(?:Doc\.\s+\d+|[0-9]+\.)\s+', texto_limpo):
+        return 'lista', True, 'left'
 
     # Citações jurídicas
     if ('Art.' in texto_limpo or 'artigo' in texto_limpo.lower() or
