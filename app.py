@@ -169,31 +169,28 @@ def detectar_tipo_paragrafo(texto):
     if texto_limpo.startswith('EXMO'):
         return 'cabecalho', True, 'center'
     
-    # ETAPA 2: Verificações para citações (MELHORADA)
+    # ETAPA 2: Verificações para citações - RESTRITA APENAS A TEXTOS COM ASPAS
     
-    # Citações entre aspas - detecção aprimorada
-    # Verifica se o texto começa com aspas e termina com aspas ou se contém aspas significativas
-    if (texto_limpo.startswith('"') or texto_limpo.startswith('"') or 
-        ('"' in texto_limpo and len(texto_limpo) > 40) or
-        ('"' in texto_limpo and len(texto_limpo) > 40)):
+    # Verifica se o texto contém aspas simples ou tipográficas
+    tem_aspas = ('"' in texto_limpo or '"' in texto_limpo or '"' in texto_limpo)
+    
+    # Citações entre aspas - apenas textos que realmente contenham aspas
+    if tem_aspas:
+        # Se o texto começa e termina com aspas, ou tem aspas significativas
+        # dentro do texto com extensão considerável, é uma citação
+        if (texto_limpo.startswith('"') or texto_limpo.startswith('"') or
+            re.search(r'[""].*[""]', texto_limpo)):
+            return 'citacao', False, 'justify'
+    
+    # ETAPA 3: Artigos de lei e referências jurídicas específicas
+    # Estas são citações mesmo sem aspas, por serem referências técnicas
+    if (re.match(r'Art\.\s*\d+', texto_limpo) or
+        re.match(r'§\s*\d+', texto_limpo) or
+        re.search(r'inciso\s+[IVX]+', texto_limpo) or
+        re.search(r'alínea\s+[a-z]', texto_limpo)):
         return 'citacao', False, 'justify'
     
-    # Citações jurídicas - expandida para capturar mais casos
-    if (any(termo in texto_limpo for termo in [
-            'Art.', 'Artigo', 'artigo', 'art.', 
-            'STJ', 'STF', 'TJ', 'TRF', 'TST', 'TSE', 
-            'REsp', 'Resp', 'HC', 'ADI', 'ADPF',
-            'Apelação', 'Recurso', 'Agravo', 'Súmula',
-            '§', 'inciso', 'alínea', 'caput']) or
-        re.search(r'\b[A-Z]{2,}\b[-\s]\d+[\.\,]?\d*\/\d+', texto_limpo) or  # Padrão de número de processo
-        re.match(r'.*".*".*', texto_limpo) or  # Texto entre aspas em qualquer lugar
-        re.search(r'in verbis', texto_limpo.lower()) or
-        re.search(r'segundo\s+[A-Z][a-zà-ú]+', texto_limpo) or
-        re.search(r'conforme\s+[A-Z][a-zà-ú]+', texto_limpo) or
-        re.search(r'nos\s+termos\s+de\s+', texto_limpo.lower())):
-        return 'citacao', False, 'justify'
-    
-    # ETAPA 3: Verificações de marcadores e listas
+    # ETAPA 4: Verificações de marcadores e listas
     
     # Marcadores de lista com espaços ou não
     if re.match(r'^\s*[•▪■□◊○●◉◎◌◦⦿⦾]+\s+', texto_limpo):
@@ -207,13 +204,13 @@ def detectar_tipo_paragrafo(texto):
     if re.match(r'^\s*[a-z][\.\)]\s+', texto_limpo):
         return 'lista', False, 'left'
     
-    # ETAPA 4: Verificações de conteúdo específico
+    # ETAPA 5: Verificações de conteúdo específico
     
     # Seções principais - padrão romano e estrutura específica
     if re.match(r'^[IVX]+[\s]*[.–—\-]+[\s]*(DOS?|DAS?)[\s]+[A-ZÀÁÂÃÉÊÍÓÔÕÚÇ\s]+$', texto_limpo):
         return 'secao_principal', True, 'left'
     
-    # ETAPA 5: Verificações de conteúdo baseadas em palavras-chave
+    # ETAPA 6: Verificações de conteúdo baseadas em palavras-chave
     
     # Título da ação - critérios mais específicos
     # Verificar se contém "AÇÃO DE" e está em maiúsculas sem ser parte de outro item
@@ -224,13 +221,13 @@ def detectar_tipo_paragrafo(texto):
         not re.match(r'^\s*\d+[\.\)]', texto_limpo)):  # Não ser item numerado
         return 'titulo_acao', True, 'center'
     
-    # ETAPA 6: Verificações de outras características de formatação
+    # ETAPA 7: Verificações de outras características de formatação
     
     # Outros tipos de listas com marcadores diversos
     if re.match(r'^\s*[\-–—*+]\s+', texto_limpo):
         return 'lista', False, 'left'
     
-    # ETAPA 7: Verificações baseadas em análise contextual
+    # ETAPA 8: Verificações baseadas em análise contextual
     
     # Textos que parecem títulos são formatados como normal para compatibilidade
     words = texto_limpo.split()
@@ -240,7 +237,7 @@ def detectar_tipo_paragrafo(texto):
         len(texto_limpo) < 50):
         return 'normal', True, 'left'  # Mantém como normal mas com negrito
     
-    # ETAPA 8: Classificação padrão
+    # ETAPA 9: Classificação padrão
     
     # Parágrafo normal
     return 'normal', False, 'justify'
