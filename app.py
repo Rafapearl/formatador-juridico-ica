@@ -165,8 +165,8 @@ def detectar_tipo_paragrafo(texto):
     if re.match(r'^\s*Doc\.\s*\d+', texto_limpo):
         return 'item_doc', False, 'left'
 
-    # Cabeçalho judicial
-    if texto_limpo.startswith('EXMO'):
+    # Cabeçalho judicial (EXMO ou EXCELENTÍSSIMO(A))
+    if re.match(r'^(EXMO|EXCELENTÍSSIM[OA])\b', texto_limpo, re.IGNORECASE):
         return 'cabecalho', True, 'center'
 
     # ETAPA 2: VERIFICAÇÃO DE CITAÇÕES APRIMORADA
