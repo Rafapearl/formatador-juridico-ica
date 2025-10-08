@@ -191,6 +191,13 @@ def detectar_tipo_paragrafo(texto):
 
 
 def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
+    # Código de depuração para identificar problemas
+    with open("debug_formatacao.txt", "w", encoding="utf-8") as debug_file:
+        for i, para in enumerate(doc_entrada.paragraphs):
+            texto = para.text.strip()
+            if texto:
+                tipo, negrito, alinhamento = detectar_tipo_paragrafo(texto)
+                debug_file.write(f"#{i}: '{texto}' => TIPO: {tipo}\n")
     # Criar novo documento
     doc_novo = Document()
 
