@@ -7,6 +7,9 @@ from docx.oxml import OxmlElement
 import re
 import os
 import tempfile
+import zipfile
+import io
+from datetime import datetime
 
 # Configurações do rodapé
 RODAPE_CONFIG = {
@@ -298,95 +301,222 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None):
     return doc_saida_path
 
 
+def criar_arquivo_zip(arquivos):
+    """Cria um arquivo ZIP contendo todos os arquivos processados"""
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for arquivo in arquivos:
+            zip_file.write(arquivo, os.path.basename(arquivo))
+    
+    zip_buffer.seek(0)
+    return zip_buffer
+
+
 def main():
-    st.set_page_config(page_title="Formatador Jurídico ICA Advocacia", page_icon="📄")
+    st.set_page_config(
+        page_title="Formatador Jurídico ICA Advocacia", 
+        page_icon="📄",
+        layout="wide"
+    )
 
     st.title("📄 Formatador Jurídico ICA Advocacia")
     st.write("Ferramenta para formatação automática de documentos jurídicos.")
 
-    # Upload do logo
-    st.header("1. Upload do Logo ICA")
-    logo_file = st.file_uploader("Faça upload do logo ICA (arquivo PNG)", type=["png", "jpg", "jpeg"])
+    # Sidebar para configurações
+    with st.sidebar:
+        st.header("⚙️ Configurações")
+        st.write("**Opções de formatação:**")
+        
+        # Guardar o logo padrão
+        save_logo = st.checkbox("Salvar logo para uso futuro", value=True)
 
-    if logo_file is not None:
-        # Salvar o logo em um arquivo temporário
-        temp_logo = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-        temp_logo.write(logo_file.getvalue())
-        logo_path = temp_logo.name
+    # Layout principal dividido em colunas
+    col1, col2 = st.columns([1, 2])
 
-        # Mostrar confirmação e preview
-        st.success("✅ Logo carregado com sucesso!")
-        st.image(logo_file, width=200)
-    else:
-        logo_path = None
-        st.warning("⚠️ Nenhum logo carregado. O cabeçalho será criado sem logo.")
+    with col1:
+        # Upload do logo
+        st.header("1. Upload do Logo ICA")
+        logo_file = st.file_uploader("Faça upload do logo ICA (arquivo PNG)", type=["png", "jpg", "jpeg"], key="logo")
 
-    # Upload dos documentos
-    st.header("2. Upload dos Documentos Word")
-    uploaded_files = st.file_uploader("Selecione os documentos Word (.docx)",
-                                     type=["docx"], accept_multiple_files=True)
+        # Verificar se existe logo salvo em cache
+        if 'logo_cache' in st.session_state and logo_file is None:
+            logo_path = st.session_state.logo_cache
+            st.success("✅ Usando logo salvo anteriormente")
+            st.image(logo_path, width=180)
+        elif logo_file is not None:
+            # Salvar o logo em um arquivo temporário
+            temp_logo = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            temp_logo.write(logo_file.getvalue())
+            logo_path = temp_logo.name
 
-    if not uploaded_files:
-        st.warning("⚠️ Nenhum documento carregado.")
-    else:
-        st.success(f"✅ {len(uploaded_files)} documento(s) carregado(s)")
+            # Salvar em cache se a opção estiver marcada
+            if save_logo:
+                st.session_state.logo_cache = logo_path
+            
+            # Mostrar confirmação e preview
+            st.success("✅ Logo carregado com sucesso!")
+            st.image(logo_file, width=180)
+        else:
+            logo_path = None
+            st.warning("⚠️ Nenhum logo carregado. O cabeçalho será criado sem logo.")
 
-    # Botão de processamento
+    with col2:
+        # Upload dos documentos
+        st.header("2. Upload dos Documentos Word")
+        uploaded_files = st.file_uploader(
+            "Selecione os documentos Word (.docx) para formatação",
+            type=["docx"], 
+            accept_multiple_files=True,
+            key="docs"
+        )
+
+        if not uploaded_files:
+            st.warning("⚠️ Nenhum documento carregado.")
+        else:
+            st.success(f"✅ {len(uploaded_files)} documento(s) carregado(s)")
+            
+            # Mostrar lista de arquivos carregados
+            with st.expander(f"📋 Arquivos carregados ({len(uploaded_files)})"):
+                for i, doc_file in enumerate(uploaded_files):
+                    st.write(f"{i+1}. {doc_file.name}")
+
+    # Área de formatação e processamento
     st.header("3. Formatação")
-    if st.button("Formatar Documentos", disabled=(len(uploaded_files) == 0)):
-        if len(uploaded_files) > 0:
-            # Configurar indicadores de progresso
-            progress_bar = st.progress(0)
-            status_text = st.empty()
+    
+    # Coluna para opções e controles
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        # Botão para formatar documentos individuais
+        format_button = st.button(
+            "Formatar Documentos", 
+            disabled=(len(uploaded_files) == 0),
+            type="primary",
+            use_container_width=True
+        )
 
+    # Processamento dos documentos quando o botão é pressionado
+    if format_button and len(uploaded_files) > 0:
+        # Criar área de status e progresso
+        progress_container = st.container()
+        
+        with progress_container:
+            status_text = st.empty()
+            progress_bar = st.progress(0)
+            
             # Criar pasta de saída temporária
             temp_dir = tempfile.mkdtemp()
-
+            
+            # Indicador de arquivos processados
+            processed_count = st.empty()
+            processed_count.info("Preparando processamento...")
+            
             # Processar cada arquivo
             arquivos_processados = []
+            errors = []
+            
             for i, doc_file in enumerate(uploaded_files):
                 try:
+                    # Atualizar status
+                    status_text.info(f"⏳ Processando: {doc_file.name} ({i+1}/{len(uploaded_files)})")
+                    
                     # Salvar arquivo temporariamente
                     input_path = os.path.join(temp_dir, doc_file.name)
                     with open(input_path, "wb") as f:
                         f.write(doc_file.getvalue())
-
+                    
                     # Gerar nome de saída
                     nome_base = os.path.splitext(doc_file.name)[0]
                     output_path = os.path.join(temp_dir, f"{nome_base}_FORMATADO.docx")
-
-                    # Atualizar status
-                    status_text.text(f"Processando: {doc_file.name}")
-
+                    
                     # Formatar documento
                     doc = Document(input_path)
                     formatar_documento(doc, output_path, logo_path)
                     arquivos_processados.append(output_path)
-
-                    # Atualizar barra de progresso
+                    
+                    # Atualizar progresso
                     progress = int(((i + 1) / len(uploaded_files)) * 100)
                     progress_bar.progress(progress)
-
+                    processed_count.info(f"✅ Processados: {i+1}/{len(uploaded_files)} documentos")
+                    
                 except Exception as e:
-                    st.error(f"❌ Erro ao processar {doc_file.name}: {str(e)}")
-
+                    errors.append((doc_file.name, str(e)))
+            
             # Finalizar processamento
             if arquivos_processados:
-                status_text.text(f"✅ Processamento concluído! {len(arquivos_processados)} documento(s) formatado(s).")
-
-                # Oferecer download dos documentos processados
+                status_text.success(f"✅ Processamento concluído! {len(arquivos_processados)} documento(s) formatado(s).")
+                progress_bar.progress(100)
+                
+                # Mostrar erros, se houver
+                if errors:
+                    with st.expander(f"⚠️ Erros ({len(errors)})"):
+                        for file_name, error_msg in errors:
+                            st.error(f"Arquivo: {file_name} - Erro: {error_msg}")
+                
+                # Área de download
                 st.header("4. Download dos Documentos Formatados")
-                for file_path in arquivos_processados:
-                    with open(file_path, "rb") as file:
+                
+                # Criar nome para o arquivo ZIP
+                data_atual = datetime.now().strftime("%Y%m%d")
+                zip_filename = f"Documentos_Formatados_ICA_{data_atual}.zip"
+                
+                # Botão grande para download em lote (ZIP)
+                if len(arquivos_processados) > 1:
+                    zip_data = criar_arquivo_zip(arquivos_processados)
+                    
+                    st.download_button(
+                        label=f"⬇️ BAIXAR TODOS OS DOCUMENTOS DE UMA VEZ (ZIP)",
+                        data=zip_data,
+                        file_name=zip_filename,
+                        mime="application/zip",
+                        use_container_width=True,
+                        type="primary",
+                    )
+                    
+                    st.info(f"O arquivo ZIP contém {len(arquivos_processados)} documentos formatados.")
+                    
+                    # Linha separadora
+                    st.markdown("---")
+                    st.markdown("#### Downloads Individuais")
+                
+                # Grid de botões de download para cada arquivo individual
+                file_cols = st.columns(min(3, len(arquivos_processados)))
+                for i, file_path in enumerate(arquivos_processados):
+                    col_idx = i % 3
+                    with file_cols[col_idx]:
                         file_name = os.path.basename(file_path)
-                        st.download_button(
-                            label=f"⬇️ Baixar {file_name}",
-                            data=file,
-                            file_name=file_name,
-                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        )
+                        with open(file_path, "rb") as file:
+                            st.download_button(
+                                label=f"⬇️ {file_name}",
+                                data=file,
+                                file_name=file_name,
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                key=f"download_{i}",
+                                use_container_width=True
+                            )
+                        st.write("")  # Espaço entre botões
             else:
                 st.error("❌ Nenhum documento foi processado com sucesso.")
+
+    # Informações adicionais
+    with st.expander("ℹ️ Informações Adicionais"):
+        st.markdown("""
+        ### Sobre a Formatação
+        
+        Este aplicativo formata documentos jurídicos seguindo o padrão visual do escritório ICA Advocacia:
+        
+        - **Cabeçalho**: Logo centralizado
+        - **Títulos**: Em azul com formatação adequada
+        - **Seções principais**: Com linha horizontal
+        - **Rodapé**: Em azul escuro com informações do escritório
+        
+        ### Dicas de Uso
+        
+        - Você pode processar vários documentos de uma vez
+        - Para melhor organização, use nomes descritivos para seus arquivos
+        - O logo será mantido para uso futuro se você marcar a opção na barra lateral
+        """)
 
 
 if __name__ == "__main__":
