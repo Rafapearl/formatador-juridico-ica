@@ -169,7 +169,31 @@ def detectar_tipo_paragrafo(texto):
     if texto_limpo.startswith('EXMO'):
         return 'cabecalho', True, 'center'
     
-    # ETAPA 2: Verificações de marcadores e listas
+    # ETAPA 2: Verificações para citações (MELHORADA)
+    
+    # Citações entre aspas - detecção aprimorada
+    # Verifica se o texto começa com aspas e termina com aspas ou se contém aspas significativas
+    if (texto_limpo.startswith('"') or texto_limpo.startswith('"') or 
+        ('"' in texto_limpo and len(texto_limpo) > 40) or
+        ('"' in texto_limpo and len(texto_limpo) > 40)):
+        return 'citacao', False, 'justify'
+    
+    # Citações jurídicas - expandida para capturar mais casos
+    if (any(termo in texto_limpo for termo in [
+            'Art.', 'Artigo', 'artigo', 'art.', 
+            'STJ', 'STF', 'TJ', 'TRF', 'TST', 'TSE', 
+            'REsp', 'Resp', 'HC', 'ADI', 'ADPF',
+            'Apelação', 'Recurso', 'Agravo', 'Súmula',
+            '§', 'inciso', 'alínea', 'caput']) or
+        re.search(r'\b[A-Z]{2,}\b[-\s]\d+[\.\,]?\d*\/\d+', texto_limpo) or  # Padrão de número de processo
+        re.match(r'.*".*".*', texto_limpo) or  # Texto entre aspas em qualquer lugar
+        re.search(r'in verbis', texto_limpo.lower()) or
+        re.search(r'segundo\s+[A-Z][a-zà-ú]+', texto_limpo) or
+        re.search(r'conforme\s+[A-Z][a-zà-ú]+', texto_limpo) or
+        re.search(r'nos\s+termos\s+de\s+', texto_limpo.lower())):
+        return 'citacao', False, 'justify'
+    
+    # ETAPA 3: Verificações de marcadores e listas
     
     # Marcadores de lista com espaços ou não
     if re.match(r'^\s*[•▪■□◊○●◉◎◌◦⦿⦾]+\s+', texto_limpo):
@@ -183,13 +207,13 @@ def detectar_tipo_paragrafo(texto):
     if re.match(r'^\s*[a-z][\.\)]\s+', texto_limpo):
         return 'lista', False, 'left'
     
-    # ETAPA 3: Verificações de conteúdo específico
+    # ETAPA 4: Verificações de conteúdo específico
     
     # Seções principais - padrão romano e estrutura específica
     if re.match(r'^[IVX]+[\s]*[.–—\-]+[\s]*(DOS?|DAS?)[\s]+[A-ZÀÁÂÃÉÊÍÓÔÕÚÇ\s]+$', texto_limpo):
         return 'secao_principal', True, 'left'
     
-    # ETAPA 4: Verificações de conteúdo baseadas em palavras-chave
+    # ETAPA 5: Verificações de conteúdo baseadas em palavras-chave
     
     # Título da ação - critérios mais específicos
     # Verificar se contém "AÇÃO DE" e está em maiúsculas sem ser parte de outro item
@@ -200,29 +224,23 @@ def detectar_tipo_paragrafo(texto):
         not re.match(r'^\s*\d+[\.\)]', texto_limpo)):  # Não ser item numerado
         return 'titulo_acao', True, 'center'
     
-    # Citações jurídicas - expandida para capturar mais casos
-    if (any(termo in texto_limpo for termo in ['Art.', 'artigo', 'STJ', 'TJ', 'REsp', 'Apelação', '§', 'inciso']) or
-        texto_limpo.startswith('"') or
-        re.search(r'\b[A-Z]{2,}\b \d+[\.\,]?\d*\/\d+', texto_limpo)):  # Padrão de número de processo
-        return 'citacao', False, 'justify'
-    
-    # ETAPA 5: Verificações de outras características de formatação
+    # ETAPA 6: Verificações de outras características de formatação
     
     # Outros tipos de listas com marcadores diversos
     if re.match(r'^\s*[\-–—*+]\s+', texto_limpo):
         return 'lista', False, 'left'
     
-    # ETAPA 6: Verificações baseadas em análise contextual
+    # ETAPA 7: Verificações baseadas em análise contextual
     
-    # Verificar se o texto tem aparência de título (curto e todas palavras importantes capitalizadas)
+    # Textos que parecem títulos são formatados como normal para compatibilidade
     words = texto_limpo.split()
     if (2 <= len(words) <= 7 and 
         all(w[0].isupper() for w in words if len(w) > 3) and 
         not texto_limpo.endswith('.') and
         len(texto_limpo) < 50):
-        return 'subtitulo', True, 'left'
+        return 'normal', True, 'left'  # Mantém como normal mas com negrito
     
-    # ETAPA 7: Classificação padrão
+    # ETAPA 8: Classificação padrão
     
     # Parágrafo normal
     return 'normal', False, 'justify'
