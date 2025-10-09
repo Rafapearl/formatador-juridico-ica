@@ -185,7 +185,7 @@ def detectar_tipo_paragrafo(texto):
     ]
 
     # Verificar qualquer tipo de aspas no texto
-    if any(aspas in texto_limpo for aspas in aspas):
+    if any(a in texto_limpo for a in aspas):
         return 'citacao', False, 'justify'
     
     # ETAPA 3: Artigos de lei e referências jurídicas específicas
