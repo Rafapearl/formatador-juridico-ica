@@ -701,7 +701,7 @@ def main():
     st.markdown("---")
     with st.expander("ℹ️ Informações sobre o Formatador"):
         st.markdown("""
-        ### Sobre a Ana
+        ### Sobre a Formatação
         
         Este aplicativo formata documentos jurídicos seguindo o padrão visual do escritório ICA Advocacia:
         
