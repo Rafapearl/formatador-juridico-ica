@@ -166,8 +166,7 @@ def detectar_tipo_paragrafo(texto):
     # Detecção da seção de Pedidos
     if re.match(r'^(PEDIDOS|POR TUDO ISSO)', texto_limpo, re.IGNORECASE):
         return 'secao_pedidos', True, 'justify'
-    elif em_pedidos and texto == '':  # Sair da seção ao encontrar parágrafo vazio
-            em_pedidos = False
+   
 
     # Itens Doc. - detecção robusta
     if re.match(r'^\s*Doc\.\s*\d+', texto_limpo):
@@ -275,7 +274,9 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
     # Adicionar cabeçalho com logo
     criar_cabecalho(doc_novo, logo_path)
 
-    em_pedidos = False # Controle da seção de Pedidos
+    em_pedidos = False # Controle da seção de Pedidosif texto == '' and em_pedidos:
+    if texto == '' and em_pedidos:
+    em_pedidos = False  # Desativa a seção de pedidos ao encontrar parágrafo vazio
     
     # Processar cada parágrafo do documento original
     for i, para in enumerate(doc_entrada.paragraphs):
@@ -349,17 +350,29 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
             aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=False,
                               tamanho_fonte=12, espacamento_antes=3,
                               espacamento_depois=3, recuo_lista=True)
+                # Substitua o bloco atual por:
         elif tipo == 'secao_pedidos':
-            aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=True,
-                                      tamanho_fonte=12, espacamento_antes=24,
-                                      espacamento_depois=12, recuo_primeira_linha=False)
+            aplicar_formatacao_paragrafo(p, 
+                alinhamento='center',
+                negrito=True,
+                tamanho_fonte=12,
+                espacamento_antes=24,
+                espacamento_depois=12,
+                recuo_primeira_linha=False
+            )
             adicionar_linha_horizontal(p, FORMATO_CONFIG['cor_linha'])
+            em_pedidos = True  # Ativa o modo pedidos
         
-        # Formatação especial para conteúdo dos Pedidos
+        # E modifique a formatação do conteúdo dos pedidos:
         elif em_pedidos:
-            aplicar_formatacao_paragrafo(p, alinhamento='center', negrito=False,
-                                      tamanho_fonte=12, espacamento_antes=6,
-                                      espacamento_depois=6, recuo_primeira_linha=False)
+            aplicar_formatacao_paragrafo(p, 
+                alinhamento='justify',  # Alterado para justificado
+                negrito=False,
+                tamanho_fonte=12,
+                espacamento_antes=6,
+                espacamento_depois=6,
+                recuo_primeira_linha=False
+            )
         
         else:  # normal
             aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
