@@ -313,8 +313,8 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
                                espacamento_depois=6,
                                cor_texto=FORMATO_CONFIG['cor_secao'],
                                recuo_primeira_linha=False)
-                # Adicionar linha horizontal cinza
-                adicionar_linha_horizontal(p, FORMATO_CONFIG['cor_linha'])
+            # Adicionar linha horizontal cinza
+             adicionar_linha_horizontal(p, FORMATO_CONFIG['cor_linha'])
         
         # Para itens de documentos específicos (Doc. X)
         elif tipo == 'item_doc':
