@@ -166,6 +166,9 @@ def detectar_tipo_paragrafo(texto):
     # Detecção da seção de Pedidos
     if re.match(r'^(PEDIDOS|POR TUDO ISSO)', texto_limpo, re.IGNORECASE):
         return 'secao_pedidos', True, 'justify'
+    elif em_pedidos and texto == '':  # Sair da seção ao encontrar parágrafo vazio
+            em_pedidos = False
+
     # Itens Doc. - detecção robusta
     if re.match(r'^\s*Doc\.\s*\d+', texto_limpo):
         return 'item_doc', False, 'left'
@@ -347,7 +350,7 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
                               tamanho_fonte=12, espacamento_antes=3,
                               espacamento_depois=3, recuo_lista=True)
         elif tipo == 'secao_pedidos':
-            aplicar_formatacao_paragrafo(p, alinhamento='center', negrito=True,
+            aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=True,
                                       tamanho_fonte=12, espacamento_antes=24,
                                       espacamento_depois=12, recuo_primeira_linha=False)
             adicionar_linha_horizontal(p, FORMATO_CONFIG['cor_linha'])
