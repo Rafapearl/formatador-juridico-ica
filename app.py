@@ -162,7 +162,10 @@ def detectar_tipo_paragrafo(texto):
     texto_limpo = texto.strip()
 
     # ETAPA 1: Verificações de estrutura específica (maior prioridade)
-
+    
+    # Detecção da seção de Pedidos
+    if re.match(r'^(PEDIDOS|POR TUDO ISSO)', texto_limpo, re.IGNORECASE):
+        return 'secao_pedidos', True, 'center'
     # Itens Doc. - detecção robusta
     if re.match(r'^\s*Doc\.\s*\d+', texto_limpo):
         return 'item_doc', False, 'left'
@@ -269,6 +272,8 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
     # Adicionar cabeçalho com logo
     criar_cabecalho(doc_novo, logo_path)
 
+    em_pedidos = False # Controle da seção de Pedidos
+    
     # Processar cada parágrafo do documento original
     for i, para in enumerate(doc_entrada.paragraphs):
         texto = para.text.strip()
@@ -276,6 +281,7 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
         if not texto:  # Pular parágrafos vazios mas adicionar espaço
             doc_novo.add_paragraph()
             continue
+    
 
         # Detectar tipo de parágrafo
         tipo, negrito, alinhamento = detectar_tipo_paragrafo(texto)
@@ -293,7 +299,10 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
         # Criar novo parágrafo
         p = doc_novo.add_paragraph()
         run = p.add_run(texto)
-        
+
+        # Ativar modo Pedidos quando detectado
+        if tipo == 'secao_pedidos':
+            em_pedidos = True
         # Aplicar formatação baseada no tipo
         if tipo == 'cabecalho':
            aplicar_formatacao_paragrafo(p, alinhamento='center', negrito=True,
@@ -337,6 +346,17 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
             aplicar_formatacao_paragrafo(p, alinhamento='left', negrito=False,
                               tamanho_fonte=12, espacamento_antes=3,
                               espacamento_depois=3, recuo_lista=True)
+        elif tipo == 'secao_pedidos':
+            aplicar_formatacao_paragrafo(p, alinhamento='center', negrito=True,
+                                      tamanho_fonte=12, espacamento_antes=24,
+                                      espacamento_depois=12, recuo_primeira_linha=False)
+            adicionar_linha_horizontal(p, FORMATO_CONFIG['cor_linha'])
+        
+        # Formatação especial para conteúdo dos Pedidos
+        elif em_pedidos:
+            aplicar_formatacao_paragrafo(p, alinhamento='center', negrito=False,
+                                      tamanho_fonte=12, espacamento_antes=6,
+                                      espacamento_depois=6, recuo_primeira_linha=False)
         
         else:  # normal
             aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
