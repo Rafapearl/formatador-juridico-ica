@@ -164,7 +164,7 @@ def detectar_tipo_paragrafo(texto):
     # ETAPA 1: Verificações de estrutura específica (maior prioridade)
     
     # Detecção da seção de Pedidos
-    if re.match(r'^(PEDIDOS|POR TUDO ISSO)', texto_limpo, re.IGNORECASE):
+    if re.match(r'^(PEDIDOS|POR TUDO ISSO|DOS PEDIDOS|DO PEDIDO)', texto_limpo, re.IGNORECASE):
         return 'secao_pedidos', True, 'justify'
    
 
@@ -374,7 +374,7 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
                 tamanho_fonte=12,
                 espacamento_antes=6,
                 espacamento_depois=6,
-                recuo_primeira_linha=False
+                recuo_primeira_linha=True
             )
         
         else:  # normal
