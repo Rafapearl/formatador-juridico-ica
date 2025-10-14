@@ -123,7 +123,7 @@ def adicionar_linha_horizontal(paragrafo, cor_rgb=(192, 192, 192)):
 def aplicar_formatacao_paragrafo(paragrafo, alinhamento='justify', negrito=False,
                                  italico=False, tamanho_fonte=12, espacamento_antes=6,
                                  espacamento_depois=6, espacamento_linha=1.5, 
-                                 cor_texto=None, recuo_lista=False):
+                                 cor_texto=None, recuo_lista=False, recuo_primeira_linha=True):
     # Alinhamento
     if alinhamento == 'center':
         paragrafo.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -137,10 +137,12 @@ def aplicar_formatacao_paragrafo(paragrafo, alinhamento='justify', negrito=False
     paragrafo.paragraph_format.space_after = Pt(espacamento_depois)
     paragrafo.paragraph_format.line_spacing = espacamento_linha
 
-    # Recuo para itens de lista
+    # Recuo para itens de lista ou primeira linha
     if recuo_lista:
         paragrafo.paragraph_format.left_indent = Inches(0.25)
         paragrafo.paragraph_format.first_line_indent = Inches(-0.25)
+    elif recuo_primeira_linha:
+        paragrafo.paragraph_format.first_line_indent = Cm(1.27)  # 0.5 polegadas
 
     # Formatação de fonte
     for run in paragrafo.runs:
