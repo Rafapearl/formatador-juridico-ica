@@ -299,6 +299,8 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
                 "tipo_detectado": tipo,
                 "negrito": negrito,
                 "alinhamento": alinhamento
+                "em_pedidos": em_pedidos,  # Novo campo
+                "alinhamento_aplicado": 'justify' if em_pedidos else alinhamento  # Novo campo
             })
 
         # Criar novo parágrafo
@@ -673,12 +675,37 @@ def main():
                                             "Texto": item["texto"],
                                             "Problema": f"Marcador • detectado como '{item['tipo_detectado']}'"
                                         })
-                                
-                                if problemas:
-                                    st.table(problemas)
-                                else:
-                                    st.success("Nenhum problema evidente detectado.")
-                
+                                    if 'PEDIDOS' in item["texto"].upper() or 'POR TUDO ISSO' in item["texto"].upper():
+                                    # Verificar se detectou corretamente como seção de pedidos
+                                    if item["tipo_detectado"] != "secao_pedidos":
+                                        problemas.append({
+                                            "Parágrafo": item["index"],
+                                            "Texto": item["texto"],
+                                            "Problema": f"Seção de Pedidos detectada como '{item['tipo_detectado']}' (deveria ser 'secao_pedidos')"
+                                        })
+                                     # Verificar alinhamento
+                                    elif item["alinhamento"] != "justify":
+                                        problemas.append({
+                                            "Parágrafo": item["index"],
+                                            "Texto": item["texto"],
+                                            "Problema": f"Alinhamento incorreto na seção de Pedidos: '{item['alinhamento']}' (deveria ser 'justify')"
+                                        })
+                                     # Verificar parágrafos subsequentes aos Pedidos
+                                    if item["tipo_detectado"] == "secao_pedidos":
+                                        # Encontrar parágrafos seguintes até próxima seção
+                                        proximos_paragrafos = [p for p in debug_data if p["index"] > item["index"] and p["texto"].strip() != ""]
+                                     for p in proximos_paragrafos[:5]:  # Verificar os 5 próximos parágrafos
+                                        if p["alinhamento"] != "justify":
+                                            problemas.append({
+                                                "Parágrafo": p["index"],
+                                                "Texto": p["texto"],
+                                                "Problema": f"Parágrafo após Pedidos com alinhamento '{p['alinhamento']}' (deveria ser 'justify')"
+                                            })
+                                    if problemas:
+                                        st.table(problemas)
+                                    else:
+                                        st.success("Nenhum problema evidente detectado.")
+                    
                 # Adicionar espaço e linha separadora
                 st.markdown("---")
                 
