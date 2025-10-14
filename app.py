@@ -275,8 +275,8 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
     criar_cabecalho(doc_novo, logo_path)
 
     em_pedidos = False # Controle da seção de Pedidosif texto == '' and em_pedidos:
-    if texto == '' and em_pedidos:
-    em_pedidos = False  # Desativa a seção de pedidos ao encontrar parágrafo vazio
+        if texto == '' and em_pedidos:
+        em_pedidos = False  # Desativa a seção de pedidos ao encontrar parágrafo vazio
     
     # Processar cada parágrafo do documento original
     for i, para in enumerate(doc_entrada.paragraphs):
