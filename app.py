@@ -273,14 +273,15 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
 
     # Adicionar cabeçalho com logo
     criar_cabecalho(doc_novo, logo_path)
-
-    em_pedidos = False # Controle da seção de Pedidosif texto == '' and em_pedidos:
-    if texto == '' and em_pedidos:
-        em_pedidos = False  # Desativa a seção de pedidos ao encontrar parágrafo vazio
+    
+    em_pedidos = False  # Desativa a seção de pedidos ao encontrar parágrafo vazio
     
     # Processar cada parágrafo do documento original
     for i, para in enumerate(doc_entrada.paragraphs):
         texto = para.text.strip()
+         # Adicione esta verificação ANTES de pular parágrafos vazios
+        if texto == '' and em_pedidos:
+            em_pedidos = False  # Desativa a seção de pedidos ao encontrar parágrafo vazio
 
         if not texto:  # Pular parágrafos vazios mas adicionar espaço
             doc_novo.add_paragraph()
