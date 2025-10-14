@@ -154,7 +154,7 @@ def aplicar_formatacao_paragrafo(paragrafo, alinhamento='justify', negrito=False
             run.font.color.rgb = RGBColor(*cor_texto)
 
 
-def detectar_tipo_paragrafo(texto):
+def detectar_tipo_paragrafo(texto, em_pedidos=False):
     """
     Detecta o tipo de parágrafo com base em características específicas.
     Implementa uma abordagem escalável com verificações em ordem de prioridade.
@@ -164,8 +164,12 @@ def detectar_tipo_paragrafo(texto):
     # ETAPA 1: Verificações de estrutura específica (maior prioridade)
     
     # Detecção da seção de Pedidos
-    if re.match(r'^(PEDIDOS|POR TUDO ISSO|DOS PEDIDOS|DO PEDIDO)', texto_limpo, re.IGNORECASE):
-        return 'secao_pedidos', True, 'justify'
+     if re.match(r'^(PEDIDOS|POR TUDO ISSO|DOS PEDIDOS|DO PEDIDO|IV[\s]*[.\-–—]+[\s]*DOS PEDIDOS)', texto_limpo, re.IGNORECASE):
+        return 'secao_pedidos', True, 'center'  # Título centralizado
+
+    # Se já estamos na seção de pedidos e é um item numerado, trate como "item_pedido"
+    if em_pedidos and re.match(r'^\s*\d+[\.\)]\s+', texto_limpo):
+        return 'item_pedido', False, 'justify'  # Justificar itens de pedidos
    
 
     # Itens Doc. - detecção robusta
@@ -289,7 +293,7 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
     
 
         # Detectar tipo de parágrafo
-        tipo, negrito, alinhamento = detectar_tipo_paragrafo(texto)
+        tipo, negrito, alinhamento = detectar_tipo_paragrafo(texto, em_pedidos)
         
         # Armazenar informações para depuração
         if debug_mode:
@@ -367,6 +371,15 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
             em_pedidos = True  # Ativa o modo pedidos
         
         # E modifique a formatação do conteúdo dos pedidos:
+        elif tipo == 'item_pedido':
+            aplicar_formatacao_paragrafo(p, 
+                alinhamento='justify',  # Justificado
+                negrito=False,
+                tamanho_fonte=12,
+                espacamento_antes=6,
+                espacamento_depois=6,
+                recuo_lista=True  # Manter o recuo de lista
+            )
         elif em_pedidos:
             aplicar_formatacao_paragrafo(p, 
                 alinhamento='justify',  # Alterado para justificado
@@ -376,9 +389,10 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
                 espacamento_depois=6,
                 recuo_primeira_linha=True
             )
+      
         
         else:  # normal
-            atual_alinhamento = 'justify' if em_pedidos else 'justify'
+            atual_alinhamento = 'justify' 
             aplicar_formatacao_paragrafo(p, alinhamento=atual_alinhamento, negrito=False,
                                tamanho_fonte=12, espacamento_antes=6,
                                espacamento_depois=6)
