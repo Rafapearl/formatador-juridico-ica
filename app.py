@@ -165,7 +165,7 @@ def detectar_tipo_paragrafo(texto):
     
     # Detecção da seção de Pedidos
     if re.match(r'^(PEDIDOS|POR TUDO ISSO)', texto_limpo, re.IGNORECASE):
-        return 'secao_pedidos', True, 'center'
+        return 'secao_pedidos', True, 'justify'
     # Itens Doc. - detecção robusta
     if re.match(r'^\s*Doc\.\s*\d+', texto_limpo):
         return 'item_doc', False, 'left'
