@@ -298,7 +298,7 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
                 "texto": texto[:50] + "..." if len(texto) > 50 else texto,
                 "tipo_detectado": tipo,
                 "negrito": negrito,
-                "alinhamento": alinhamento
+                "alinhamento": alinhamento,
                 "em_pedidos": em_pedidos,  # Novo campo
                 "alinhamento_aplicado": 'justify' if em_pedidos else alinhamento  # Novo campo
             })
@@ -378,9 +378,10 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
             )
         
         else:  # normal
-            aplicar_formatacao_paragrafo(p, alinhamento='justify', negrito=False,
-                                       tamanho_fonte=12, espacamento_antes=6,
-                                       espacamento_depois=6)
+            atual_alinhamento = 'justify' if em_pedidos else 'justify'
+            aplicar_formatacao_paragrafo(p, alinhamento=atual_alinhamento, negrito=False,
+                               tamanho_fonte=12, espacamento_antes=6,
+                               espacamento_depois=6)
         
 
     # Processar tabelas do documento original
@@ -676,35 +677,35 @@ def main():
                                             "Problema": f"Marcador • detectado como '{item['tipo_detectado']}'"
                                         })
                                     if 'PEDIDOS' in item["texto"].upper() or 'POR TUDO ISSO' in item["texto"].upper():
-                                    # Verificar se detectou corretamente como seção de pedidos
-                                    if item["tipo_detectado"] != "secao_pedidos":
-                                        problemas.append({
-                                            "Parágrafo": item["index"],
-                                            "Texto": item["texto"],
-                                            "Problema": f"Seção de Pedidos detectada como '{item['tipo_detectado']}' (deveria ser 'secao_pedidos')"
-                                        })
-                                     # Verificar alinhamento
-                                    elif item["alinhamento"] != "justify":
-                                        problemas.append({
-                                            "Parágrafo": item["index"],
-                                            "Texto": item["texto"],
-                                            "Problema": f"Alinhamento incorreto na seção de Pedidos: '{item['alinhamento']}' (deveria ser 'justify')"
-                                        })
-                                     # Verificar parágrafos subsequentes aos Pedidos
-                                    if item["tipo_detectado"] == "secao_pedidos":
-                                        # Encontrar parágrafos seguintes até próxima seção
-                                        proximos_paragrafos = [p for p in debug_data if p["index"] > item["index"] and p["texto"].strip() != ""]
-                                     for p in proximos_paragrafos[:5]:  # Verificar os 5 próximos parágrafos
-                                        if p["alinhamento"] != "justify":
+                                        # Verificar se detectou corretamente como seção de pedidos
+                                        if item["tipo_detectado"] != "secao_pedidos":
                                             problemas.append({
-                                                "Parágrafo": p["index"],
-                                                "Texto": p["texto"],
-                                                "Problema": f"Parágrafo após Pedidos com alinhamento '{p['alinhamento']}' (deveria ser 'justify')"
+                                                "Parágrafo": item["index"],
+                                                "Texto": item["texto"],
+                                                "Problema": f"Seção de Pedidos detectada como '{item['tipo_detectado']}' (deveria ser 'secao_pedidos')"
                                             })
-                                    if problemas:
-                                        st.table(problemas)
-                                    else:
-                                        st.success("Nenhum problema evidente detectado.")
+                                        # Verificar alinhamento
+                                        elif item["alinhamento"] != "justify":
+                                            problemas.append({
+                                                "Parágrafo": item["index"],
+                                                "Texto": item["texto"],
+                                                "Problema": f"Alinhamento incorreto na seção de Pedidos: '{item['alinhamento']}' (deveria ser 'justify')"
+                                            })
+                                        # Verificar parágrafos subsequentes aos Pedidos
+                                        if item["tipo_detectado"] == "secao_pedidos":
+                                            # Encontrar parágrafos seguintes até próxima seção
+                                            proximos_paragrafos = [p for p in debug_data if p["index"] > item["index"] and p["texto"].strip() != ""]
+                                            for p in proximos_paragrafos[:5]:  # Verificar os 5 próximos parágrafos
+                                                if p["alinhamento"] != "justify":
+                                                    problemas.append({
+                                                        "Parágrafo": p["index"],
+                                                        "Texto": p["texto"],
+                                                        "Problema": f"Parágrafo após Pedidos com alinhamento '{p['alinhamento']}' (deveria ser 'justify')"
+                                                    })
+                                if problemas:
+                                    st.table(problemas)
+                                else:
+                                    st.success("Nenhum problema evidente detectado.")
                     
                 # Adicionar espaço e linha separadora
                 st.markdown("---")
