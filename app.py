@@ -174,7 +174,7 @@ def detectar_tipo_paragrafo(texto, em_pedidos=False):
     # Se já estamos na seção de pedidos e é um item numerado, trate como "item_pedido"
     if em_pedidos and re.match(r'^\s*\d+[\.\)]\s+', texto_limpo):
         return 'item_pedido', False, 'justify'  # Justificar itens de pedidos
-c
+
    
 
     # Itens Doc. - detecção robusta
