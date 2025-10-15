@@ -165,7 +165,8 @@ def detectar_tipo_paragrafo(texto, em_pedidos=False):
     
     # Detecção da seção de Pedidos
     if re.match(r'^(PEDIDOS|POR TUDO ISSO|DOS PEDIDOS|DO PEDIDO|IV[\s]*[.\-–—]+[\s]*DOS PEDIDOS)', texto_limpo, re.IGNORECASE):
-         return 'secao_pedidos', True, 'center'  # Título centralizado
+        return 'secao_principal', True, 'left'  # Mesmo formato que seção principal
+
 
     # Se já estamos na seção de pedidos e é um item numerado, trate como "item_pedido"
     if em_pedidos and re.match(r'^\s*\d+[\.\)]\s+', texto_limpo):
