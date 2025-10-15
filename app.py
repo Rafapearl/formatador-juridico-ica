@@ -163,10 +163,13 @@ def detectar_tipo_paragrafo(texto, em_pedidos=False):
 
     # ETAPA 1: Verificações de estrutura específica (maior prioridade)
     
-    # Detecção da seção de Pedidos
-    if re.match(r'^(PEDIDOS|POR TUDO ISSO|DOS PEDIDOS|DO PEDIDO|IV[\s]*[.\-–—]+[\s]*DOS PEDIDOS)', texto_limpo, re.IGNORECASE):
-        return 'secao_principal', True, 'left'  # Mesmo formato que seção principal
+    # Quando encontrar o cabeçalho dos pedidos
+    if re.match(r'^(PEDIDOS|POR TUDO ISSO|DOS PEDIDOS|DO PEDIDO|IV[\s]*[.\-–—]+[\s]*DOS PEDIDOS)', texto, re.IGNORECASE):
+         em_pedidos = True
 
+    # Quando encontrar parágrafo vazio
+    if texto == '' and em_pedidos:
+         em_pedidos = False
 
     # Se já estamos na seção de pedidos e é um item numerado, trate como "item_pedido"
     if em_pedidos and re.match(r'^\s*\d+[\.\)]\s+', texto_limpo):
@@ -280,6 +283,7 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
     criar_cabecalho(doc_novo, logo_path)
     
     em_pedidos = False  # Desativa a seção de pedidos ao encontrar parágrafo vazio
+    
     
     # Processar cada parágrafo do documento original
     for i, para in enumerate(doc_entrada.paragraphs):
