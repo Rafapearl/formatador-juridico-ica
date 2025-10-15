@@ -164,8 +164,8 @@ def detectar_tipo_paragrafo(texto, em_pedidos=False):
     # ETAPA 1: Verificações de estrutura específica (maior prioridade)
     
     # Quando encontrar o cabeçalho dos pedidos
-    if re.match(r'^(PEDIDOS|POR TUDO ISSO|DOS PEDIDOS|DO PEDIDO|IV[\s]*[.\-–—]+[\s]*DOS PEDIDOS)', texto, re.IGNORECASE):
-         em_pedidos = True
+    if re.match(r'^(PEDIDOS|POR TUDO ISSO|DOS PEDIDOS|DO PEDIDO|IV[\s]*[.\-–—]+[\s]*DOS PEDIDOS)', texto_limpo, re.IGNORECASE):
+      return 'secao_principal', True, 'left'
 
     # Quando encontrar parágrafo vazio
     if texto == '' and em_pedidos:
@@ -174,6 +174,7 @@ def detectar_tipo_paragrafo(texto, em_pedidos=False):
     # Se já estamos na seção de pedidos e é um item numerado, trate como "item_pedido"
     if em_pedidos and re.match(r'^\s*\d+[\.\)]\s+', texto_limpo):
         return 'item_pedido', False, 'justify'  # Justificar itens de pedidos
+c
    
 
     # Itens Doc. - detecção robusta
@@ -288,7 +289,10 @@ def formatar_documento(doc_entrada, doc_saida_path, logo_path=None, debug_mode=F
     # Processar cada parágrafo do documento original
     for i, para in enumerate(doc_entrada.paragraphs):
         texto = para.text.strip()
-         # Adicione esta verificação ANTES de pular parágrafos vazios
+         # Verificar se é cabeçalho da seção de pedidos ANTES de qualquer outra verificação
+        if re.match(r'^(PEDIDOS|POR TUDO ISSO|DOS PEDIDOS|DO PEDIDO|IV[\s]*[.\-–—]+[\s]*DOS PEDIDOS)', texto, re.IGNORECASE):
+             em_pedidos = True
+        # Verificar se deve desativar a seção de pedidos
         if texto == '' and em_pedidos:
             em_pedidos = False  # Desativa a seção de pedidos ao encontrar parágrafo vazio
 
